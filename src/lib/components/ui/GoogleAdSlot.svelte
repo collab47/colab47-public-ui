@@ -18,14 +18,17 @@
     class: className = '',
   }: Props = $props();
 
-  const adsenseClient = $derived(env.PUBLIC_GOOGLE_ADSENSE_CLIENT?.trim() || '');
+  const DEFAULT_ADSENSE_CLIENT = 'ca-pub-8499865824729612';
+  const adsenseClient = $derived(
+    env.PUBLIC_GOOGLE_ADSENSE_CLIENT?.trim() || DEFAULT_ADSENSE_CLIENT,
+  );
   let adPushed = $state(false);
 
   onMount(() => {
     if (!$shouldShowAds || !adsenseClient || typeof window === 'undefined') return;
 
     const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[data-c47-adsense="true"]',
+      'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"], script[data-c47-adsense="true"]',
     );
 
     const pushAd = (): void => {
