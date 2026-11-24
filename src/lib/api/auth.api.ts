@@ -1,0 +1,84 @@
+import { apiRequest } from './client';
+import type {
+  AuthUser,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  RegistrationMetadataResponse,
+} from './types';
+
+export const authApi = {
+  getRegistrationMetadata(): Promise<RegistrationMetadataResponse> {
+    return apiRequest<RegistrationMetadataResponse>('/auth/metadata', {
+      method: 'GET',
+      auth: false,
+    });
+  },
+
+  register(payload: RegisterRequest): Promise<RegisterResponse> {
+    return apiRequest<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  login(payload: LoginRequest): Promise<LoginResponse> {
+    return apiRequest<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  me(): Promise<AuthUser> {
+    return apiRequest<AuthUser>('/auth/me', {
+      method: 'GET',
+      auth: true,
+    });
+  },
+
+  checkAvailability(params: {
+    email?: string;
+    handle?: string;
+  }): Promise<{ emailAvailable?: boolean; handleAvailable?: boolean }> {
+    const query = new URLSearchParams();
+    if (params.email) query.set('email', params.email);
+    if (params.handle) query.set('handle', params.handle);
+    return apiRequest(`/auth/check-availability?${query.toString()}`);
+  },
+
+  verifyEmail(token: string): Promise<{ verified: boolean; message: string }> {
+    return apiRequest(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+      method: 'GET',
+      auth: false,
+    });
+  },
+
+  resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+    return apiRequest('/auth/resend-verification', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    });
+  },
+
+  forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    });
+  },
+
+  resetPassword(payload: {
+    token: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    });
+  },
+};
