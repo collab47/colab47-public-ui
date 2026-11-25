@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { page } from '$app/stores';
   import { useRegisterSW } from 'virtual:pwa-register/svelte';
   import {
     dismissPwaPrompt,
@@ -18,8 +19,14 @@
   let installing = $state(false);
   let mounted = $state(false);
 
+  const isLandingPage = $derived($page.url.pathname === '/');
+
   const shouldRenderInstall = $derived(
-    mounted && !$pwaState.isStandalone && !$pwaState.isInstalled && !$pwaState.isDismissed,
+    mounted &&
+      !isLandingPage &&
+      !$pwaState.isStandalone &&
+      !$pwaState.isInstalled &&
+      !$pwaState.isDismissed,
   );
 
   onMount(() => {
@@ -139,7 +146,7 @@
             type="button"
             disabled={installing}
             onclick={() => void handleInstall()}
-            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6366F1] via-[#7C3AED] to-[#8B5CF6] px-3.5 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:brightness-105 disabled:opacity-60"
+            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#9333EA] px-3.5 py-1.5 text-[11px] font-bold text-white shadow-xs transition hover:brightness-105 disabled:opacity-60"
           >
             <Icon name="rocket" size={12} />
             <span>{installing ? '...' : $t.ui.installApp}</span>

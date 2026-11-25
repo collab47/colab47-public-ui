@@ -25,15 +25,15 @@
 </script>
 
 <main
-  class="auth-centered-bg relative flex min-h-screen flex-col overflow-hidden bg-[#F5F6FB] px-4 py-6 sm:px-8"
+  class="auth-centered-bg relative flex min-h-screen flex-col overflow-hidden bg-[#FAF5FF] px-4 py-6 sm:px-8"
 >
-  <!-- Subtle Student-Dashboard Indigo & Magenta Ambient Corner Glows -->
+  <!-- Subtle Violet & Purple Ambient Corner Glows -->
   <div
-    class="pointer-events-none absolute -top-32 -left-24 h-80 w-80 rounded-full bg-[#6366F1]/14 blur-3xl"
+    class="pointer-events-none absolute -top-32 -left-24 h-80 w-80 rounded-full bg-[#7C3AED]/14 blur-3xl"
     aria-hidden="true"
   ></div>
   <div
-    class="pointer-events-none absolute -right-24 -bottom-32 h-96 w-96 rounded-full bg-[#C026D3]/12 blur-3xl"
+    class="pointer-events-none absolute -right-24 -bottom-32 h-96 w-96 rounded-full bg-[#9333EA]/14 blur-3xl"
     aria-hidden="true"
   ></div>
 
@@ -44,7 +44,7 @@
       <LanguageSwitcher align="right" />
       <a
         href="/"
-        class="inline-flex items-center gap-1.5 rounded-full border border-[#DDD6FE] bg-white px-3.5 py-1.5 text-xs font-bold text-[#5B3DF5] no-underline shadow-2xs transition hover:border-[#6D4AFF] hover:bg-[#F3F1FF] hover:no-underline sm:text-sm"
+        class="inline-flex items-center gap-1.5 rounded-full border border-[#DDD6FE] bg-white px-3.5 py-1.5 text-xs font-bold text-[#7C3AED] no-underline shadow-2xs transition hover:border-[#9333EA] hover:bg-[#F5F3FF] hover:text-[#6B21A8] hover:no-underline sm:text-sm"
       >
         <Icon name="arrow-left" size={15} />
         <span>{$t.auth.backToHome}</span>
@@ -55,20 +55,20 @@
   <!-- Centered Auth Card -->
   <section class="relative z-10 m-auto w-full max-w-[496px] py-4">
     <div
-      class="overflow-hidden rounded-2xl border border-[#E8EAF6] bg-white shadow-[0_16px_42px_rgba(30,27,75,0.09)]"
+      class="overflow-hidden rounded-2xl border border-[#E9D5FF] bg-white shadow-[0_16px_42px_rgba(76,29,149,0.09)]"
     >
-      <!-- Magenta-Indigo Accent Top Strip matching Student Dashboard -->
+      <!-- Violet-Purple Accent Top Strip -->
       <div
-        class="h-1.5 w-full bg-gradient-to-r from-[#6366F1] via-[#7C3AED] to-[#C026D3]"
+        class="h-1.5 w-full bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#A855F7]"
         aria-hidden="true"
       ></div>
 
       <div class="p-6 sm:p-8">
         <div class="mb-6 text-center">
-          <h1 class="text-2xl font-extrabold tracking-tight text-[#1E1B4B] sm:text-3xl">
+          <h1 class="text-2xl font-extrabold tracking-tight text-[#2E1065] sm:text-3xl">
             {title}
           </h1>
-          <p class="mt-1.5 text-sm font-medium text-slate-600">{subtitle}</p>
+          <p class="mt-1.5 text-sm font-medium text-purple-900/75">{subtitle}</p>
         </div>
 
         <div>
@@ -76,7 +76,7 @@
         </div>
 
         {#if footer}
-          <div class="mt-6 border-t border-[#E8EAF6] pt-4 text-center text-sm text-slate-600">
+          <div class="mt-6 border-t border-[#E9D5FF] pt-4 text-center text-sm text-slate-600">
             {@render footer()}
           </div>
         {/if}

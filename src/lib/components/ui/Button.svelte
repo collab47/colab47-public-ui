@@ -5,9 +5,9 @@
     base: 'inline-flex items-center justify-center gap-2 rounded-xl border font-semibold whitespace-nowrap no-underline transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-55 disabled:cursor-not-allowed hover:no-underline',
     variants: {
       variant: {
-        primary: 'bg-gradient-to-r from-[#4F46E5] via-[#6D4AFF] to-[#C026D3] text-white border-transparent shadow-sm hover:brightness-110',
-        secondary: 'bg-[#1E1B4B] text-white border-transparent hover:bg-[#312E81]',
-        outline: 'bg-background text-[#4F46E5] border-[#C7D2FE] hover:bg-[#EEF2FF] hover:border-[#818CF8] hover:text-[#A21CAF]',
+        primary: 'bg-gradient-to-r from-[#7C3AED] via-[#9333EA] to-[#A855F7] text-white border-transparent shadow-sm hover:brightness-110',
+        secondary: 'bg-[#2E1065] text-white border-transparent hover:bg-[#4C1D95]',
+        outline: 'bg-background text-[#7C3AED] border-[#DDD6FE] hover:bg-[#F5F3FF] hover:border-[#A855F7] hover:text-[#6B21A8]',
         ghost: 'bg-transparent text-slate-700 border-transparent hover:bg-secondary',
         danger: 'bg-destructive text-destructive-foreground border-transparent hover:bg-rose-700',
       },

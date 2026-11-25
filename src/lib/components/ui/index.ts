@@ -13,6 +13,8 @@ export { default as CountryCodePhoneInput } from './CountryCodePhoneInput.svelte
 export { default as Divider } from './Divider.svelte';
 export { default as Footer } from './Footer.svelte';
 export { default as GoogleAdSlot } from './GoogleAdSlot.svelte';
+export { default as HeroCarousel } from './HeroCarousel.svelte';
+export type { HeroCarouselSlide, HeroSlideStat } from './HeroCarousel.svelte';
 export { default as Icon } from './Icon.svelte';
 export type { IconName } from './Icon.svelte';
 export { default as Input } from './Input.svelte';

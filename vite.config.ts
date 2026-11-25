@@ -52,6 +52,9 @@ export default defineConfig({
       },
     }),
   ],
+  optimizeDeps: {
+    include: ['lodash.get', 'lodash.isequal', 'lodash.clonedeep'],
+  },
   server: {
     port: 5173,
     strictPort: false,
