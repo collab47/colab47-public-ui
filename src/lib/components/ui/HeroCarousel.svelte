@@ -29,7 +29,6 @@
   export let userAvatarUrl: string | null | undefined = undefined;
   export let continueHref = '/dashboard';
   export let signUpLabel = 'Sign Up';
-  export let signInLabel = 'Sign In';
   export let dpdpNote = '';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,43 +47,43 @@
 
 {#snippet slideContent(slide: HeroCarouselSlide, idx: number)}
   <div
-    class="flex min-h-[560px] w-full items-center justify-center px-14 pt-14 pb-20 text-center sm:min-h-[620px] sm:px-24"
+    class="hero-slide-bg flex min-h-[560px] w-full items-center justify-center px-14 pt-14 pb-20 text-center sm:min-h-[620px] sm:px-24"
   >
     <div class="mx-auto flex w-full max-w-5xl flex-col items-center gap-6">
       <span
-        class="hero-shimmer relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-[#D8B4FE]/55 bg-[#2e1065]/35 px-4 py-1.5 text-xs font-bold tracking-wide text-white backdrop-blur-sm"
+        class="hero-shimmer relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-fuchsia-300/60 bg-[#1B0638]/75 px-4 py-1.5 text-xs font-bold tracking-wide text-fuchsia-200 shadow-[0_4px_16px_rgba(15,5,36,0.6)] backdrop-blur-sm"
       >
         <span class="relative flex h-2 w-2" aria-hidden="true">
-          <span class="hero-ping absolute inline-flex h-full w-full rounded-full bg-[#E9D5FF]"></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-[#C084FC]"></span>
+          <span class="hero-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-300"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-fuchsia-400"></span>
         </span>
         <span>{slide.badge}</span>
       </span>
 
       <svelte:element
         this={idx === 0 ? 'h1' : 'h2'}
-        class="text-4xl leading-tight font-extrabold tracking-tight text-white drop-shadow-[0_6px_24px_rgba(46,16,101,0.7)] sm:text-5xl lg:text-7xl"
+        class="text-4xl leading-tight font-extrabold tracking-tight sm:text-5xl lg:text-7xl"
       >
-        <span>{slide.titlePrimary}</span>
-        <span
-          class="block bg-gradient-to-r from-[#F3E8FF] via-[#E9D5FF] to-[#C084FC] bg-clip-text text-transparent sm:inline"
-        >
+        <span class="hero-text-shine">{slide.titlePrimary}</span>
+        <span class="hero-text-shine-accent block sm:inline">
           {' '}{slide.titleSecondary}
         </span>
       </svelte:element>
 
-      <p class="text-lg font-bold text-white sm:text-2xl">{slide.subtitle}</p>
-      <p class="max-w-3xl text-sm leading-relaxed text-purple-100/95 sm:text-lg">
+      <p class="hero-subtitle-glow text-lg font-extrabold text-fuchsia-200 sm:text-2xl">
+        {slide.subtitle}
+      </p>
+      <p class="hero-text-shadow max-w-3xl text-sm leading-relaxed font-semibold text-fuchsia-100 sm:text-lg">
         {slide.description}
       </p>
 
-      <div class="grid w-full max-w-xl grid-cols-3 gap-3 border-t border-white/20 pt-5">
+      <div class="grid w-full max-w-xl grid-cols-3 gap-3 border-t border-fuchsia-300/35 pt-5">
         {#each slide.stats as stat, i}
-          <div class="text-center {i > 0 ? 'border-l border-white/20 pl-3' : ''}">
-            <strong class="block text-xl font-extrabold tabular-nums text-[#E9D5FF] sm:text-2xl">
+          <div class="text-center {i > 0 ? 'border-l border-fuchsia-300/35 pl-3' : ''}">
+            <strong class="hero-text-shine-accent block text-xl font-extrabold tabular-nums sm:text-2xl">
               {stat.value}
             </strong>
-            <span class="text-xs font-medium text-purple-100/90">{stat.label}</span>
+            <span class="hero-text-shadow text-xs font-bold text-fuchsia-100">{stat.label}</span>
           </div>
         {/each}
       </div>
@@ -92,7 +91,7 @@
       {#if isAuthenticated && userName}
         <a
           href={continueHref}
-          class="inline-flex min-h-12 items-center gap-3 rounded-full border border-white/30 bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#9333EA] px-6 py-2.5 text-base font-extrabold text-white no-underline shadow-[0_10px_28px_rgba(124,58,237,0.5)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
+          class="hero-btn-shine relative inline-flex min-h-12 items-center gap-3 overflow-hidden rounded-full border border-fuchsia-300/60 bg-gradient-to-r from-fuchsia-700 via-fuchsia-600 to-purple-600 px-6 py-2.5 text-base font-extrabold text-fuchsia-50 no-underline shadow-[0_10px_28px_rgba(15,5,36,0.65)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
         >
           <Avatar name={userName} src={userAvatarUrl} size="sm" />
           <span>{userName} — Continue</span>
@@ -100,19 +99,18 @@
         </a>
       {:else}
         <div class="flex flex-col items-center gap-3">
-          <p class="max-w-xl text-sm font-semibold text-[#E9D5FF] sm:text-base">
+          <p class="hero-text-shadow max-w-xl text-sm font-bold text-fuchsia-200 sm:text-base">
             {slide.ctaPrompt}
           </p>
           <div class="flex flex-wrap items-center justify-center gap-3">
             <a
               href="/signup"
-              class="inline-flex min-h-12 items-center gap-2.5 rounded-full border border-white/35 bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#9333EA] px-7 py-2.5 text-base font-extrabold text-white no-underline shadow-[0_10px_28px_rgba(124,58,237,0.5)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
+              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-2.5 overflow-hidden rounded-full border border-fuchsia-300/60 bg-gradient-to-r from-fuchsia-700 via-fuchsia-600 to-purple-600 px-7 py-2.5 text-base font-extrabold text-fuchsia-50 no-underline shadow-[0_10px_28px_rgba(15,5,36,0.65)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
             >
               <Icon name="user-plus" size={18} />
               <span>{signUpLabel} — It's Free</span>
               <Icon name="arrow-right" size={18} />
             </a>
-           
           </div>
         </div>
       {/if}
@@ -120,7 +118,7 @@
       {#if dpdpNote}
         <p
           id={idx === 0 ? 'dpdp' : undefined}
-          class="rounded-full border border-white/25 bg-[#2e1065]/30 px-4 py-1 text-xs font-medium text-purple-100 backdrop-blur-sm"
+          class="rounded-full border border-fuchsia-300/45 bg-[#1B0638]/75 px-4 py-1 text-xs font-semibold text-fuchsia-100 shadow-[0_4px_14px_rgba(15,5,36,0.55)] backdrop-blur-sm"
         >
           {dpdpNote}
         </p>
@@ -133,27 +131,6 @@
   class="hero-carousel-section relative w-full overflow-hidden border-b border-white/15 text-white"
   aria-label="Collab47 hero carousel"
 >
-  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-    <picture class="block h-full w-full">
-      <source srcset="/images/carasoul-bg.webp" type="image/webp" />
-      <img
-        src="/images/carasoul-bg.jpg"
-        alt=""
-        width="1600"
-        height="800"
-        fetchpriority="high"
-        loading="eager"
-        decoding="async"
-        class="h-full w-full object-cover object-center select-none"
-      />
-    </picture>
-    <div
-      class="absolute inset-0 bg-gradient-to-br from-[#2e1065]/74 via-[#5b21b6]/56 to-[#7e22ce]/68"
-    ></div>
-    <div class="hero-glow hero-glow-violet"></div>
-    <div class="hero-glow hero-glow-purple"></div>
-  </div>
-
   <div class="hero-sc-root relative z-10 w-full">
     {#if browser && CarouselComponent}
       <svelte:component
@@ -245,7 +222,113 @@
 <style>
   .hero-carousel-section {
     contain: layout paint;
-    background: linear-gradient(125deg, #2e1065 0%, #4c1d95 38%, #6b21a8 72%, #9333ea 100%);
+    background-color: #1a0b2e;
+  }
+
+  .hero-slide-bg {
+    background-image: url('/images/carasoul-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .hero-text-shine {
+    background-image: linear-gradient(
+      180deg,
+      #fae8ff 0%,
+      #f5d0fe 32%,
+      #ffffff 48%,
+      #f0abfc 56%,
+      #fae8ff 100%
+    );
+    background-size: 240% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 6px rgba(15, 5, 36, 0.95))
+      drop-shadow(0 6px 20px rgba(15, 5, 36, 0.85));
+    animation: heroTextShine 4.2s linear infinite;
+  }
+
+  .hero-text-shine-accent {
+    background-image: linear-gradient(
+      180deg,
+      #f0abfc 0%,
+      #e879f9 28%,
+      #ffffff 48%,
+      #f5d0fe 58%,
+      #f0abfc 100%
+    );
+    background-size: 240% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 6px rgba(15, 5, 36, 0.95))
+      drop-shadow(0 6px 22px rgba(15, 5, 36, 0.9));
+    animation: heroTextShine 3.6s linear infinite;
+    animation-delay: -0.9s;
+  }
+
+  @keyframes heroTextShine {
+    0% {
+      background-position: 200% center;
+    }
+    100% {
+      background-position: -200% center;
+    }
+  }
+
+  .hero-subtitle-glow {
+    text-shadow:
+      0 1px 6px rgba(15, 5, 36, 0.98),
+      0 3px 18px rgba(15, 5, 36, 0.9),
+      0 0 14px rgba(240, 171, 252, 0.45);
+    animation: heroSubtitleGlow 3.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes heroSubtitleGlow {
+    0% {
+      text-shadow:
+        0 1px 6px rgba(15, 5, 36, 0.98),
+        0 3px 18px rgba(15, 5, 36, 0.9),
+        0 0 8px rgba(240, 171, 252, 0.25);
+    }
+    100% {
+      text-shadow:
+        0 1px 6px rgba(15, 5, 36, 0.98),
+        0 3px 18px rgba(15, 5, 36, 0.9),
+        0 0 22px rgba(245, 208, 254, 0.85);
+    }
+  }
+
+  .hero-text-shadow {
+    text-shadow:
+      0 1px 6px rgba(15, 5, 36, 0.98),
+      0 3px 18px rgba(15, 5, 36, 0.9);
+  }
+
+  .hero-btn-shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%) skewX(-18deg);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 100%
+    );
+    animation: heroBtnShine 3.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes heroBtnShine {
+    0%, 55% {
+      transform: translateX(-120%) skewX(-18deg);
+    }
+    100% {
+      transform: translateX(140%) skewX(-18deg);
+    }
   }
 
   .hero-sc-root :global(.sc-carousel__carousel-container),
@@ -258,40 +341,6 @@
 
   .hero-sc-root :global(.sc-carousel__pages-container > *) {
     flex-shrink: 0;
-  }
-
-  .hero-glow {
-    position: absolute;
-    border-radius: 9999px;
-    will-change: transform, opacity;
-  }
-
-  .hero-glow-violet {
-    top: -120px;
-    left: -90px;
-    width: 520px;
-    height: 520px;
-    background: radial-gradient(circle, rgba(124, 58, 237, 0.44) 0%, rgba(124, 58, 237, 0) 68%);
-    animation: heroGlowDriftA 14s ease-in-out infinite alternate;
-  }
-
-  .hero-glow-purple {
-    right: -110px;
-    bottom: -140px;
-    width: 560px;
-    height: 560px;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.44) 0%, rgba(168, 85, 247, 0) 68%);
-    animation: heroGlowDriftB 16s ease-in-out infinite alternate;
-  }
-
-  @keyframes heroGlowDriftA {
-    0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.7; }
-    100% { transform: translate3d(48px, 32px, 0) scale(1.14); opacity: 1; }
-  }
-
-  @keyframes heroGlowDriftB {
-    0% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.68; }
-    100% { transform: translate3d(-48px, -32px, 0) scale(1.16); opacity: 1; }
   }
 
   .hero-ping {
@@ -319,9 +368,12 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-glow,
     .hero-ping,
-    .hero-shimmer::after {
+    .hero-shimmer::after,
+    .hero-text-shine,
+    .hero-text-shine-accent,
+    .hero-subtitle-glow,
+    .hero-btn-shine::after {
       animation: none !important;
     }
   }

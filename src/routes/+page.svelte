@@ -240,11 +240,11 @@
 
 <svelte:head>
   <title>Collab47: {$t.home.heroTitlePrimary} {$t.home.heroTitleSecondary}</title>
-  <link rel="preload" as="image" type="image/webp" href="/images/carasoul-bg.webp" fetchpriority="high" />
+  <link rel="preload" as="image" type="image/png" href="/images/carasoul-bg.png" fetchpriority="high" />
 </svelte:head>
 
 <main class="w-full">
-  <!-- Section 1: Hero Section Itself IS a Full-Width Centered svelte-carousel with carasoul-bg.webp -->
+  <!-- Section 1: Hero Section Itself IS a Full-Width Centered svelte-carousel with carasoul-bg.png -->
   <HeroCarousel
     slides={heroSlides}
     autoplayDuration={5500}
@@ -253,7 +253,6 @@
     userAvatarUrl={$currentUser?.avatarUrl}
     {continueHref}
     signUpLabel={$t.nav.signUp}
-    signInLabel={$t.auth.signInLink}
     dpdpNote={$t.home.dpdpNote}
   />
 

@@ -1087,10 +1087,10 @@
             <!-- INNER COLUMN 1: Your Activity Donut + Trending Tags + Following Communities -->
             <div class="flex min-w-0 flex-col gap-4">
               <!-- Your Activity Donut Chart -->
-              <section class="overflow-hidden rounded-2xl border border-[#E8EAF6] bg-white p-4 shadow-[0_2px_10px_rgba(30,27,75,0.04)]">
+              <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.06)]">
                 <div class="mb-3 flex items-center gap-2">
-                  <Icon name="shield-check" size={17} class="shrink-0 text-[#1E1B4B]" />
-                  <h2 class="truncate text-sm font-extrabold text-[#1E1B4B]">{$t.ui.yourActivity}</h2>
+                  <Icon name="shield-check" size={17} class="shrink-0 text-slate-950" />
+                  <h2 class="truncate text-sm font-extrabold text-slate-950">{$t.ui.yourActivity}</h2>
                 </div>
                 <ActivityDonutChart
                   totalProjects={overview?.activityBreakdown.totalProjects ?? $dashboardState.projects.length}

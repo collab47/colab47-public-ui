@@ -11,10 +11,10 @@
 
   const segments = $derived.by(() => {
     const raw = [
-      { key: 'code', label: 'Code', value: Math.max(0, Number(codeCount) || 0), color: '#7C3AED' },
-      { key: 'media', label: 'Media', value: Math.max(0, Number(mediaCount) || 0), color: '#3B82F6' },
-      { key: 'documents', label: 'Docs', value: Math.max(0, Number(documentsCount) || 0), color: '#22C55E' },
-      { key: 'other', label: 'Other', value: Math.max(0, Number(otherCount) || 0), color: '#F59E0B' },
+      { key: 'code', label: 'Code', value: Math.max(0, Number(codeCount) || 0), color: '#4C1D95' },
+      { key: 'media', label: 'Media', value: Math.max(0, Number(mediaCount) || 0), color: '#1E3A8A' },
+      { key: 'documents', label: 'Docs', value: Math.max(0, Number(documentsCount) || 0), color: '#14532D' },
+      { key: 'other', label: 'Other', value: Math.max(0, Number(otherCount) || 0), color: '#92400E' },
     ];
     const sum = raw.reduce((acc, s) => acc + s.value, 0);
     const nonZeroCount = raw.filter((s) => s.value > 0).length;
@@ -22,7 +22,7 @@
     const circumference = 2 * Math.PI * radius;
 
     if (sum === 0) {
-      // Draw a subtle 4-segment pastel ring so the rounded chart never looks blank
+      // Draw a 4-segment dark-shade ring so the chart stays bold and readable when empty
       const quarter = circumference / 4;
       let offset = 0;
       const items = raw.map((s) => {
@@ -70,7 +70,7 @@
         cy="50"
         r={segments.radius}
         fill="none"
-        stroke="#EEF0FA"
+        stroke="#CBD5E1"
         stroke-width="13"
       />
       {#each segments.items as seg (seg.key)}
@@ -81,7 +81,7 @@
             r={segments.radius}
             fill="none"
             stroke={seg.color}
-            stroke-opacity="0.28"
+            stroke-opacity="0.88"
             stroke-width="13"
             stroke-dasharray={seg.dashArray}
             stroke-dashoffset={seg.dashOffset}
@@ -106,19 +106,22 @@
       {/each}
     </svg>
     <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-      <strong class="text-lg leading-none font-extrabold text-[#1E1B4B]">{totalProjects}</strong>
-      <span class="mt-0.5 text-[10px] font-semibold text-slate-500">Projects</span>
+      <strong class="text-lg leading-none font-extrabold text-slate-950">{totalProjects}</strong>
+      <span class="mt-0.5 text-[10px] font-bold text-slate-700">Projects</span>
     </div>
   </div>
 
-  <ul class="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+  <ul class="grid w-full min-w-0 grid-cols-2 gap-x-2.5 gap-y-2 text-[11px]">
     {#each segments.items as seg (seg.key)}
-      <li class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-[#F8F9FE] px-2 py-1">
-        <span class="flex min-w-0 items-center gap-1.5 font-medium text-slate-700">
-          <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {seg.color};"></span>
+      <li
+        class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg border px-2 py-1.5"
+        style="background-color: {seg.color}; border-color: {seg.color};"
+      >
+        <span class="flex min-w-0 items-center gap-1.5 font-semibold text-white">
+          <span class="h-2 w-2 shrink-0 rounded-full bg-white/90"></span>
           <span class="truncate">{seg.label}</span>
         </span>
-        <strong class="shrink-0 font-bold text-[#1E1B4B]">{seg.value}</strong>
+        <strong class="shrink-0 font-extrabold text-white">{seg.value}</strong>
       </li>
     {/each}
   </ul>

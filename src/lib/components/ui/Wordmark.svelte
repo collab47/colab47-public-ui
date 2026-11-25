@@ -18,7 +18,7 @@
 <a
   {href}
   class="inline-flex shrink-0 items-center gap-2 bg-transparent no-underline transition-opacity hover:opacity-90 hover:no-underline"
-  aria-label="collab47.com Home"
+  aria-label="Collab47.com Home"
 >
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,7 @@
         ? 'text-white'
         : 'text-black'}"
     >
-      collab47.com
+      Collab47.com
     </span>
   {/if}
 </a>
