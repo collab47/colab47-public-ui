@@ -9,6 +9,7 @@ export { default as Card } from './Card.svelte';
 export type { CardColor } from './Card.svelte';
 export { default as Checkbox } from './Checkbox.svelte';
 export { default as ChipGroup } from './ChipGroup.svelte';
+export { default as CountryCodePhoneInput } from './CountryCodePhoneInput.svelte';
 export { default as Divider } from './Divider.svelte';
 export { default as Footer } from './Footer.svelte';
 export { default as GoogleAdSlot } from './GoogleAdSlot.svelte';

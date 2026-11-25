@@ -50,7 +50,7 @@
           {$t.dashboard.chooseWorkspaceTitle}
         </h1>
         <p class="mt-1 text-sm font-medium text-logo-green">
-          Dedicated dashboards for all 6 platform roles (excluding internal staff &amp; corporate operations roles).
+          Dedicated dashboards for all 8 public roles (excluding private staff &amp; corporate operations roles).
         </p>
       </div>
 

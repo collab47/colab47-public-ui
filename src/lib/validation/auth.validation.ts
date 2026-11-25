@@ -1,4 +1,38 @@
 const RFC_EMAIL_NO_CONSECUTIVE_DOTS = /^(?!.*\.\.)[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+const MOBILE_COUNTRY_CODE_REGEX = /^\+[1-9]\d{0,3}$/;
+const MOBILE_NUMBER_REGEX = /^\d{6,15}$/;
+
+export function normalizeMobileCountryCode(value: string): string {
+  const cleaned = value.trim().replace(/\s+/g, '');
+  if (!cleaned) return '';
+  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+}
+
+export function normalizeMobileNumber(value: string): string {
+  return value.trim().replace(/[\s\-().]+/g, '');
+}
+
+export function validateMobileCountryCode(value: string): string | undefined {
+  const normalized = normalizeMobileCountryCode(value);
+  if (!normalized) {
+    return 'Country code is required.';
+  }
+  if (!MOBILE_COUNTRY_CODE_REGEX.test(normalized)) {
+    return 'Please select or enter a valid country code (e.g. +91, +1, +44).';
+  }
+  return undefined;
+}
+
+export function validateMobileNumber(value: string): string | undefined {
+  const normalized = normalizeMobileNumber(value);
+  if (!normalized) {
+    return 'Mobile number is required.';
+  }
+  if (!MOBILE_NUMBER_REGEX.test(normalized)) {
+    return 'Mobile number must contain 6 to 15 digits.';
+  }
+  return undefined;
+}
 
 export function validateName(value: string): string | undefined {
   const normalized = value.trim().replace(/\s+/g, ' ');

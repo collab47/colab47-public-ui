@@ -301,6 +301,30 @@
             <Icon name="arrow-right" size={18} />
           </a>
         </div>
+      {:else}
+        <div class="hero-enter hero-delay-4 flex flex-col items-center gap-3.5">
+          <p class="max-w-xl text-sm font-semibold text-amber-100/95 sm:text-base">
+            Ready to showcase your builds and collaborate across India's R&amp;D ecosystem?
+            Create your free Collab47 account in under a minute.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="/signup"
+              class="inline-flex min-h-12 items-center gap-2.5 rounded-full border border-white/40 bg-logo-saffron px-7 py-2.5 text-base font-extrabold text-white no-underline shadow-xl transition hover:scale-[1.02] hover:bg-logo-saffron-hover hover:no-underline"
+            >
+              <Icon name="user-plus" size={18} />
+              <span>{$t.nav.signUp} — It's Free</span>
+              <Icon name="arrow-right" size={18} />
+            </a>
+            <a
+              href="/login"
+              class="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-bold text-white no-underline backdrop-blur-md transition hover:border-white/50 hover:bg-white/18 hover:no-underline"
+            >
+              <Icon name="log-in" size={16} />
+              <span>{$t.auth.signInLink}</span>
+            </a>
+          </div>
+        </div>
       {/if}
 
       <p

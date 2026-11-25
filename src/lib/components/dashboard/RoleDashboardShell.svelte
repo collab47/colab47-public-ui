@@ -6,7 +6,11 @@
   import type { FeedFilterTab } from '$lib/api/dashboard.api';
   import type { AccountType } from '$lib/api/types';
   import { uploadsApi, type UploadFolder } from '$lib/api/uploads.api';
-  import { ROLE_DASHBOARD_MAP, getDashboardPath } from '$lib/dashboards/role-dashboards';
+  import {
+    ROLE_DASHBOARD_MAP,
+    getDashboardPath,
+    resolveDashboardTranslationKey,
+  } from '$lib/dashboards/role-dashboards';
   import {
     addProjectMedia,
     authState,
@@ -151,8 +155,8 @@
 
   const activeUser = $derived($profileState.profile ?? $authState.user);
   const fullProfile = $derived($profileState.profile);
-  const roleConfig = $derived(ROLE_DASHBOARD_MAP[role]);
-  const roleCopy = $derived($t.dashboard.roles[role]);
+  const roleConfig = $derived(ROLE_DASHBOARD_MAP[role] ?? ROLE_DASHBOARD_MAP.student);
+  const roleCopy = $derived($t.dashboard.roles[resolveDashboardTranslationKey(role)]);
   const completeness = $derived(fullProfile?.completenessPercent ?? 30);
   const overview = $derived($liveDashboardState.overview);
 

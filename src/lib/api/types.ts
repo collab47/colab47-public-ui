@@ -1,24 +1,36 @@
-export type RoleCategory = 'external' | 'internal';
+export type RoleCategory = 'public' | 'private';
 
-export type AccountType =
+export type PublicRoleCode =
   | 'student'
   | 'researcher'
+  | 'scientist'
   | 'faculty'
   | 'industry'
-  | 'institution'
-  | 'mentor';
+  | 'startup'
+  | 'government'
+  | 'others';
 
-export interface ExternalRoleOption {
+export type AccountType = PublicRoleCode | 'institution' | 'mentor';
+
+export interface PublicRoleOption {
   id: string;
   roleCode: AccountType;
   roleName: string;
   roleCategory: RoleCategory;
   roleDescription: string | null;
   badgeLabel: string | null;
+  hierarchyLevel?: number;
+}
+
+export type ExternalRoleOption = PublicRoleOption;
+
+export interface PublicRolesResponse {
+  roles: PublicRoleOption[];
+  total: number;
 }
 
 export interface RegistrationMetadataResponse {
-  accountTypes: ExternalRoleOption[];
+  accountTypes: PublicRoleOption[];
   occupations: Array<{
     id: string;
     code: OccupationCode;
@@ -139,6 +151,8 @@ export interface AuthUser {
   email: string;
   handle: string;
   name: string;
+  mobileCountryCode?: string | null;
+  mobileNumber?: string | null;
   accountType: AccountType;
   primaryRole: string;
   primaryRoleId: string | null;
@@ -171,6 +185,8 @@ export interface AuthTokens {
 export interface RegisterRequest {
   name: string;
   email: string;
+  mobileCountryCode: string;
+  mobileNumber: string;
   password: string;
   confirmPassword: string;
   accountType: AccountType;
@@ -320,6 +336,8 @@ export interface SocialLinkItem {
 export interface FullProfile {
   id: string;
   email: string | null;
+  mobileCountryCode?: string | null;
+  mobileNumber?: string | null;
   handle: string;
   name: string;
   headline: string | null;

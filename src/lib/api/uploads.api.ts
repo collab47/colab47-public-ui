@@ -12,28 +12,33 @@ export interface UploadedMediaItem {
   kind: 'image' | 'video';
   originalName: string;
   folder: UploadFolder;
-  storage: 's3' | 'local_fallback';
+  storage: 'railway_bucket' | 'local_fallback';
 }
 
 export interface UploadConfig {
+  bucketConfigured: boolean;
   s3Configured: boolean;
-  storageMode: 's3' | 'local_fallback' | 'disabled';
+  storageMode: 'railway_bucket' | 'local_fallback' | 'disabled';
   region: string;
   bucket: string | null;
+  endpoint: string | null;
   maxImageSizeBytes: number;
   maxVideoSizeBytes: number;
   allowedImageTypes: string[];
   allowedVideoTypes: string[];
 }
 
-export interface PresignUploadResponse {
+export interface PresignPostUploadResponse {
+  url: string;
+  fields: Record<string, string>;
   uploadUrl: string;
   publicUrl: string;
   key: string;
-  method: 'PUT';
+  method: 'POST';
   expiresInSeconds: number;
   contentType: string;
-  storage: 's3';
+  kind: 'image' | 'video';
+  storage: 'railway_bucket';
 }
 
 export const uploadsApi = {
@@ -41,13 +46,16 @@ export const uploadsApi = {
     return apiRequest<UploadConfig>('/uploads/config', { method: 'GET', auth: false });
   },
 
-  presignUpload(payload: {
+  /**
+   * Requests a 1-hour Railway Bucket Presigned POST (`url` + `fields`) from the backend.
+   */
+  presignPostUpload(payload: {
     fileName: string;
     contentType: string;
     folder?: UploadFolder;
     sizeBytes?: number;
-  }): Promise<PresignUploadResponse> {
-    return apiRequest<PresignUploadResponse>('/uploads/presign', {
+  }): Promise<PresignPostUploadResponse> {
+    return apiRequest<PresignPostUploadResponse>('/uploads/presign-post', {
       method: 'POST',
       auth: true,
       body: payload,
@@ -55,10 +63,74 @@ export const uploadsApi = {
   },
 
   /**
-   * Uploads one or multiple image/video files to AWS S3 (or local dev fallback)
-   * via `POST /api/v1/uploads/media?folder=...`.
+   * Uploads a single file directly from the browser to the Railway Bucket using
+   * a Presigned POST (`FormData` + `fields` + `Content-Type` + `file`) — zero backend egress.
    */
-  async uploadFiles(
+  async uploadDirectToBucket(
+    file: File,
+    folder: UploadFolder = 'projects',
+  ): Promise<UploadedMediaItem> {
+    const contentType = file.type || 'application/octet-stream';
+    const presigned = await this.presignPostUpload({
+      fileName: file.name,
+      contentType,
+      folder,
+      sizeBytes: file.size,
+    });
+
+    const form = new FormData();
+    Object.entries(presigned.fields).forEach(([key, value]) => {
+      form.append(key, value);
+    });
+    form.append('Content-Type', presigned.contentType);
+    form.append('file', file);
+
+    console.info('[Collab47 Uploads] Direct POST -> Railway Bucket', {
+      bucketPostUrl: presigned.url,
+      key: presigned.key,
+      contentType: presigned.contentType,
+      sizeBytes: file.size,
+    });
+
+    const postRes = await fetch(presigned.url, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!postRes.ok) {
+      console.error('[Collab47 Uploads] Direct Railway Bucket POST failed', {
+        status: postRes.status,
+        bucketPostUrl: presigned.url,
+      });
+      throw new ApiError({
+        statusCode: postRes.status,
+        errorCode: 'RAILWAY_BUCKET_POST_FAILED',
+        message: 'Direct upload to Railway Bucket failed. Check Railway Bucket CORS settings.',
+      });
+    }
+
+    console.info('[Collab47 Uploads] Direct Railway Bucket upload complete', {
+      key: presigned.key,
+      serveUrl: presigned.publicUrl,
+    });
+
+    return {
+      key: presigned.key,
+      url: presigned.publicUrl,
+      contentType: presigned.contentType,
+      sizeBytes: file.size,
+      kind: presigned.kind,
+      originalName: file.name,
+      folder,
+      storage: 'railway_bucket',
+    };
+  },
+
+  /**
+   * Server-handled upload fallback (`POST /api/v1/uploads/media?folder=...`)
+   * used in local dev (when Railway Bucket is not configured) or if Bucket CORS blocks browser POST.
+   */
+  async uploadFilesViaBackend(
     files: File[],
     folder: UploadFolder = 'projects',
   ): Promise<UploadedMediaItem[]> {
@@ -78,6 +150,11 @@ export const uploadsApi = {
     }
 
     const url = `${getApiBaseUrl()}/uploads/media?folder=${encodeURIComponent(folder)}`;
+    console.info('[Collab47 Uploads] Fallback multipart POST ->', url, {
+      fileCount: files.length,
+      folder,
+    });
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -92,7 +169,7 @@ export const uploadsApi = {
         payload = {
           statusCode: response.status,
           errorCode: 'UPLOAD_FAILED',
-          message: response.statusText || 'Failed to upload media to S3.',
+          message: response.statusText || 'Failed to upload media.',
         };
       }
       throw new ApiError(payload);
@@ -103,43 +180,39 @@ export const uploadsApi = {
   },
 
   /**
-   * Direct browser-to-S3 upload using a 5-minute pre-signed PUT URL.
+   * Primary upload helper used across the UI (avatars, covers, projects, posts):
+   * 1. Attempts direct browser-to-Railway-Bucket Presigned POST (zero service egress).
+   * 2. Falls back seamlessly to backend `/uploads/media` if Railway Bucket is not configured
+   *    locally or if Bucket CORS is not yet enabled for the frontend origin.
    */
-  async uploadDirectToS3(
-    file: File,
+  async uploadFiles(
+    files: File[],
     folder: UploadFolder = 'projects',
-  ): Promise<UploadedMediaItem> {
-    const presigned = await this.presignUpload({
-      fileName: file.name,
-      contentType: file.type || 'application/octet-stream',
-      folder,
-      sizeBytes: file.size,
-    });
+  ): Promise<UploadedMediaItem[]> {
+    if (files.length === 0) return [];
 
-    const putRes = await fetch(presigned.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': presigned.contentType },
-      body: file,
-    });
+    try {
+      const results: UploadedMediaItem[] = [];
+      for (const file of files) {
+        const item = await this.uploadDirectToBucket(file, folder);
+        results.push(item);
+      }
+      return results;
+    } catch (err) {
+      // Do not fall back on validation/auth errors (unsupported type, file too large, 401)
+      if (
+        err instanceof ApiError &&
+        (err.statusCode === 400 || err.statusCode === 401 || err.statusCode === 403)
+      ) {
+        throw err;
+      }
 
-    if (!putRes.ok) {
-      throw new ApiError({
-        statusCode: putRes.status,
-        errorCode: 'S3_PUT_FAILED',
-        message: 'Direct upload to Amazon S3 failed. Check S3 bucket CORS rules.',
-      });
+      console.warn(
+        '[Collab47 Uploads] Direct Railway Bucket presigned POST unavailable — falling back to backend /uploads/media',
+        err instanceof Error ? err.message : String(err),
+      );
+      return this.uploadFilesViaBackend(files, folder);
     }
-
-    return {
-      key: presigned.key,
-      url: presigned.publicUrl,
-      contentType: presigned.contentType,
-      sizeBytes: file.size,
-      kind: presigned.contentType.startsWith('video/') ? 'video' : 'image',
-      originalName: file.name,
-      folder,
-      storage: 's3',
-    };
   },
 
   deleteMedia(key: string): Promise<{ deleted: boolean; key: string }> {

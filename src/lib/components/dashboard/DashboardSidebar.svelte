@@ -2,7 +2,11 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import type { AccountType } from '$lib/api/types';
-  import { ROLE_DASHBOARD_MAP, getDashboardPath } from '$lib/dashboards/role-dashboards';
+  import {
+    ROLE_DASHBOARD_MAP,
+    getDashboardPath,
+    resolveDashboardTranslationKey,
+  } from '$lib/dashboards/role-dashboards';
   import {
     authState,
     dashboardState,
@@ -18,8 +22,10 @@
 
   const activeUser = $derived($profileState.profile ?? $authState.user);
   const userAccountRole = $derived<AccountType>(activeUser?.accountType ?? 'student');
-  const userRoleDef = $derived(ROLE_DASHBOARD_MAP[userAccountRole]);
-  const userRoleCopy = $derived($t.dashboard.roles[userAccountRole]);
+  const userRoleDef = $derived(ROLE_DASHBOARD_MAP[userAccountRole] ?? ROLE_DASHBOARD_MAP.student);
+  const userRoleCopy = $derived(
+    $t.dashboard.roles[resolveDashboardTranslationKey(userAccountRole)],
+  );
   const userDashboardHref = $derived(getDashboardPath(userAccountRole));
   const membershipTier = $derived<'free' | 'premium'>($authState.user?.membershipTier ?? 'free');
   const completeness = $derived($profileState.profile?.completenessPercent ?? 30);

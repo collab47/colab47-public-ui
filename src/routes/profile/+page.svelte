@@ -156,16 +156,18 @@
   const fallbackAccountTypeOptions = [
     { value: 'student', label: 'Student' },
     { value: 'researcher', label: 'Researcher' },
+    { value: 'scientist', label: 'Scientist' },
     { value: 'faculty', label: 'Faculty' },
-    { value: 'industry', label: 'Industry & Startup' },
-    { value: 'institution', label: 'Institution' },
-    { value: 'mentor', label: 'Mentor' },
+    { value: 'industry', label: 'Industry' },
+    { value: 'startup', label: 'Startup' },
+    { value: 'government', label: 'Government' },
+    { value: 'others', label: 'Others' },
   ];
 
   const accountTypeOptions = $derived(
     $profileState.options?.roles && $profileState.options.roles.length > 0
       ? $profileState.options.roles
-          .filter((r) => r.roleCategory === 'external')
+          .filter((r) => r.roleCategory === 'public')
           .map((r) => ({ value: r.roleCode, label: r.roleName }))
       : fallbackAccountTypeOptions,
   );

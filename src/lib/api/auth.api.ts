@@ -3,12 +3,25 @@ import type {
   AuthUser,
   LoginRequest,
   LoginResponse,
+  PublicRolesResponse,
   RegisterRequest,
   RegisterResponse,
   RegistrationMetadataResponse,
 } from './types';
 
 export const authApi = {
+  getPublicRoles(): Promise<PublicRolesResponse> {
+    const fullEndpoint = `${getApiBaseUrl()}/auth/public-roles`;
+    console.info('[Collab47 Auth] Fetching Public Roles API:', {
+      method: 'GET',
+      endpoint: fullEndpoint,
+    });
+    return apiRequest<PublicRolesResponse>('/auth/public-roles', {
+      method: 'GET',
+      auth: false,
+    });
+  },
+
   getRegistrationMetadata(): Promise<RegistrationMetadataResponse> {
     return apiRequest<RegistrationMetadataResponse>('/auth/metadata', {
       method: 'GET',
@@ -22,6 +35,8 @@ export const authApi = {
       method: 'POST',
       endpoint: fullEndpoint,
       email: payload.email,
+      mobileCountryCode: payload.mobileCountryCode,
+      hasMobileNumber: Boolean(payload.mobileNumber),
       accountType: payload.accountType,
     });
     return apiRequest<RegisterResponse>('/auth/register', {

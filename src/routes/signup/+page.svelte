@@ -5,11 +5,15 @@
   import { authApi } from '$lib/api/auth.api';
   import { ApiError, getApiBaseUrl } from '$lib/api/client';
   import { projectsApi, type PublicInvitationPreview } from '$lib/api/projects.api';
-  import type { AccountType, ExternalRoleOption } from '$lib/api/types';
+  import type { AccountType, PublicRoleCode, PublicRoleOption } from '$lib/api/types';
   import { pushToast, setAuthSession, t } from '$lib/stores';
   import {
+    normalizeMobileCountryCode,
+    normalizeMobileNumber,
     validateConfirmPassword,
     validateEmail,
+    validateMobileCountryCode,
+    validateMobileNumber,
     validateName,
     validateRegisterPassword,
   } from '$lib/validation/auth.validation';
@@ -17,6 +21,7 @@
     Alert,
     AuthShell,
     Button,
+    CountryCodePhoneInput,
     Divider,
     Icon,
     Input,
@@ -25,72 +30,110 @@
     type IconName,
   } from '$ui';
 
-  type SignupField = 'name' | 'email' | 'password' | 'confirmPassword' | 'accountType';
+  type SignupField =
+    | 'accountType'
+    | 'name'
+    | 'email'
+    | 'mobileCountryCode'
+    | 'mobileNumber'
+    | 'password'
+    | 'confirmPassword';
 
-  const FALLBACK_EXTERNAL_ROLES: ExternalRoleOption[] = [
+  const FALLBACK_PUBLIC_ROLES: PublicRoleOption[] = [
     {
-      id: 'ext-student',
+      id: 'pub-student',
       roleCode: 'student',
       roleName: 'Student',
-      roleCategory: 'external',
-      roleDescription: 'UG/PG student building projects & proof of work',
+      roleCategory: 'public',
+      roleDescription: 'UG/PG student building projects & proof of work.',
       badgeLabel: 'Student',
+      hierarchyLevel: 1,
     },
     {
-      id: 'ext-researcher',
+      id: 'pub-researcher',
       roleCode: 'researcher',
       roleName: 'Researcher',
-      roleCategory: 'external',
-      roleDescription: 'PhD scholar, fellow & open lab researcher',
+      roleCategory: 'public',
+      roleDescription: 'PhD scholar, fellow & open lab researcher.',
       badgeLabel: 'Researcher',
+      hierarchyLevel: 2,
     },
     {
-      id: 'ext-faculty',
+      id: 'pub-scientist',
+      roleCode: 'scientist',
+      roleName: 'Scientist',
+      roleCategory: 'public',
+      roleDescription: 'Applied scientist & R&D specialist.',
+      badgeLabel: 'Scientist',
+      hierarchyLevel: 3,
+    },
+    {
+      id: 'pub-faculty',
       roleCode: 'faculty',
-      roleName: 'Faculty / PI',
-      roleCategory: 'external',
-      roleDescription: 'Professor, lab PI & project supervisor',
+      roleName: 'Faculty',
+      roleCategory: 'public',
+      roleDescription: 'Professor, academic faculty & principal investigator.',
       badgeLabel: 'Faculty',
+      hierarchyLevel: 4,
     },
     {
-      id: 'ext-industry',
+      id: 'pub-industry',
       roleCode: 'industry',
-      roleName: 'Industry / Startup',
-      roleCategory: 'external',
-      roleDescription: 'R&D partner, founder & technical recruiter',
+      roleName: 'Industry',
+      roleCategory: 'public',
+      roleDescription: 'Industry R&D partner, engineer & technical recruiter.',
       badgeLabel: 'Industry',
+      hierarchyLevel: 5,
     },
     {
-      id: 'ext-institution',
-      roleCode: 'institution',
-      roleName: 'Institution',
-      roleCategory: 'external',
-      roleDescription: 'College, university, incubator & govt agency',
-      badgeLabel: 'Institution',
+      id: 'pub-startup',
+      roleCode: 'startup',
+      roleName: 'Startup',
+      roleCategory: 'public',
+      roleDescription: 'Startup founder, deep-tech builder & innovation team.',
+      badgeLabel: 'Startup',
+      hierarchyLevel: 6,
     },
     {
-      id: 'ext-mentor',
-      roleCode: 'mentor',
-      roleName: 'Mentor / Advisor',
-      roleCategory: 'external',
-      roleDescription: 'Domain advisor guiding innovation teams',
-      badgeLabel: 'Mentor',
+      id: 'pub-government',
+      roleCode: 'government',
+      roleName: 'Government',
+      roleCategory: 'public',
+      roleDescription: 'Government agency, national lab & public mission steward.',
+      badgeLabel: 'Government',
+      hierarchyLevel: 7,
+    },
+    {
+      id: 'pub-others',
+      roleCode: 'others',
+      roleName: 'Others',
+      roleCategory: 'public',
+      roleDescription: 'Independent innovator, mentor & ecosystem contributor.',
+      badgeLabel: 'Others',
+      hierarchyLevel: 8,
     },
   ];
 
   const ROLE_ICON_MAP: Record<AccountType, IconName> = {
     student: 'graduation-cap',
     researcher: 'flask',
+    scientist: 'cpu',
     faculty: 'landmark',
-    industry: 'rocket',
+    industry: 'briefcase',
+    startup: 'rocket',
+    government: 'building',
+    others: 'sparkles',
     institution: 'building',
     mentor: 'award',
   };
 
-  let externalRoles = $state<ExternalRoleOption[]>(FALLBACK_EXTERNAL_ROLES);
-  let accountType = $state<AccountType>('student');
+  let publicRoles = $state<PublicRoleOption[]>(FALLBACK_PUBLIC_ROLES);
+  let loadingRoles = $state(true);
+  let accountType = $state<PublicRoleCode>('student');
   let name = $state('');
   let email = $state('');
+  let mobileCountryCode = $state('+91');
+  let mobileNumber = $state('');
   let password = $state('');
   let confirmPassword = $state('');
   let isSubmitting = $state(false);
@@ -99,11 +142,13 @@
   let invitePreview = $state<PublicInvitationPreview | null>(null);
   let fieldErrors = $state<Partial<Record<SignupField, string>>>({});
   let touched = $state<Record<SignupField, boolean>>({
+    accountType: false,
     name: false,
     email: false,
+    mobileCountryCode: false,
+    mobileNumber: false,
     password: false,
     confirmPassword: false,
-    accountType: false,
   });
 
   onMount(async () => {
@@ -122,18 +167,18 @@
     }
 
     try {
-      const metadata = await authApi.getRegistrationMetadata();
-      const loaded = (metadata.accountTypes ?? []).filter(
-        (role) => role.roleCategory === 'external',
-      );
+      const response = await authApi.getPublicRoles();
+      const loaded = (response.roles ?? []).filter((role) => role.roleCategory === 'public');
       if (loaded.length > 0) {
-        externalRoles = loaded;
+        publicRoles = loaded;
         if (!loaded.some((r) => r.roleCode === accountType) && loaded[0]) {
-          accountType = loaded[0].roleCode;
+          accountType = loaded[0].roleCode as PublicRoleCode;
         }
       }
     } catch {
-      // Keep fallback external roles if backend is unreachable
+      // Keep fallback public roles if backend is temporarily unreachable
+    } finally {
+      loadingRoles = false;
     }
   });
 
@@ -142,8 +187,8 @@
     if (prefillEmail && !email) {
       email = prefillEmail;
     }
-    const prefillRole = $page.url.searchParams.get('role') as AccountType | null;
-    if (prefillRole && FALLBACK_EXTERNAL_ROLES.some((r) => r.roleCode === prefillRole)) {
+    const prefillRole = $page.url.searchParams.get('role') as PublicRoleCode | null;
+    if (prefillRole && publicRoles.some((r) => r.roleCode === prefillRole)) {
       accountType = prefillRole;
     }
   });
@@ -165,6 +210,10 @@
       message = validateName(valueOverride ?? name);
     } else if (field === 'email') {
       message = validateEmail(valueOverride ?? email);
+    } else if (field === 'mobileCountryCode') {
+      message = validateMobileCountryCode(valueOverride ?? mobileCountryCode);
+    } else if (field === 'mobileNumber') {
+      message = validateMobileNumber(valueOverride ?? mobileNumber);
     } else if (field === 'password') {
       const nextPassword = valueOverride ?? password;
       message = validateRegisterPassword(nextPassword);
@@ -175,9 +224,9 @@
       message = validateConfirmPassword(password, valueOverride ?? confirmPassword);
     } else {
       const candidate = (valueOverride ?? accountType) as AccountType;
-      message = externalRoles.some((r) => r.roleCode === candidate)
+      message = publicRoles.some((r) => r.roleCode === candidate)
         ? undefined
-        : 'Please choose your role.';
+        : 'Please choose your public role.';
     }
 
     setFieldError(field, message);
@@ -196,7 +245,7 @@
   }
 
   function handleRoleSelect(roleCode: AccountType): void {
-    accountType = roleCode;
+    accountType = roleCode as PublicRoleCode;
     touched = { ...touched, accountType: true };
     formError = null;
     setFieldError('accountType', undefined);
@@ -204,18 +253,30 @@
 
   function validateAll(): boolean {
     touched = {
+      accountType: true,
       name: true,
       email: true,
+      mobileCountryCode: true,
+      mobileNumber: true,
       password: true,
       confirmPassword: true,
-      accountType: true,
     };
+    const roleErr = validateField('accountType');
     const nameErr = validateField('name');
     const emailErr = validateField('email');
+    const countryCodeErr = validateField('mobileCountryCode');
+    const mobileErr = validateField('mobileNumber');
     const passwordErr = validateField('password');
     const confirmErr = validateField('confirmPassword');
-    const roleErr = validateField('accountType');
-    return !nameErr && !emailErr && !passwordErr && !confirmErr && !roleErr;
+    return (
+      !roleErr &&
+      !nameErr &&
+      !emailErr &&
+      !countryCodeErr &&
+      !mobileErr &&
+      !passwordErr &&
+      !confirmErr
+    );
   }
 
   async function handleSubmit(event: SubmitEvent): Promise<void> {
@@ -226,11 +287,16 @@
       return;
     }
 
+    const normalizedCountryCode = normalizeMobileCountryCode(mobileCountryCode);
+    const normalizedMobile = normalizeMobileNumber(mobileNumber);
+
     isSubmitting = true;
     const registerEndpoint = `${getApiBaseUrl()}/auth/register`;
     console.info('[Collab47 UI][Register] Submitting registration form', {
       endpoint: registerEndpoint,
       email: email.trim().toLowerCase(),
+      mobileCountryCode: normalizedCountryCode,
+      hasMobileNumber: Boolean(normalizedMobile),
       accountType,
       hasInviteToken: Boolean(inviteToken),
     });
@@ -239,6 +305,8 @@
       const response = await authApi.register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        mobileCountryCode: normalizedCountryCode,
+        mobileNumber: normalizedMobile,
         password,
         confirmPassword,
         accountType,
@@ -254,7 +322,7 @@
       });
 
       const selectedRoleLabel =
-        externalRoles.find((r) => r.roleCode === response.user.accountType)?.roleName ??
+        publicRoles.find((r) => r.roleCode === response.user.accountType)?.roleName ??
         response.user.accountType;
 
       setAuthSession(response.user, response.tokens);
@@ -290,11 +358,13 @@
       if (err instanceof ApiError) {
         formError = err.message;
         fieldErrors = {
+          accountType: err.fieldErrors.accountType,
           name: err.fieldErrors.name,
           email: err.fieldErrors.email,
+          mobileCountryCode: err.fieldErrors.mobileCountryCode,
+          mobileNumber: err.fieldErrors.mobileNumber,
           password: err.fieldErrors.password,
           confirmPassword: err.fieldErrors.confirmPassword,
-          accountType: err.fieldErrors.accountType,
         };
       } else {
         formError = 'Unable to connect to the Collab47 API. Please check the backend server.';
@@ -314,9 +384,6 @@
   subtitle={$t.auth.signupSubtitle}
   heroTagline="{$t.home.heroTitlePrimary} {$t.home.heroTitleSecondary}"
 >
-  <SocialLoginButton label={$t.auth.signupWithGoogle} redirectTo="/signup/plan" />
-  <Divider label={$t.auth.orRegisterEmail} />
-
   <form class="flex flex-col gap-3.5" onsubmit={handleSubmit} novalidate>
     {#if invitePreview}
       <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-950">
@@ -337,21 +404,23 @@
       <Alert tone="error" title="Registration failed">{formError}</Alert>
     {/if}
 
-    <!-- External Role Selection (Loaded from public.mst_roles WHERE role_category = 'external') -->
+    <!-- Public Role Selection on Top (Fetched from GET /api/v1/auth/public-roles) -->
     <fieldset class="flex flex-col gap-2 border-0 p-0">
       <legend class="flex w-full items-center justify-between text-xs font-semibold text-slate-700">
         <span>{$t.auth.joiningAsLabel} <span class="text-rose-500">*</span></span>
-        <span class="font-medium text-logo-green">{$t.auth.joiningAsHint}</span>
+        <span class="font-medium text-logo-green">
+          {loadingRoles ? 'Loading roles...' : $t.auth.joiningAsHint}
+        </span>
       </legend>
 
-      <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {#each externalRoles as role (role.roleCode)}
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {#each publicRoles as role (role.roleCode)}
           {@const selected = accountType === role.roleCode}
           <button
             type="button"
             onclick={() => handleRoleSelect(role.roleCode)}
             aria-pressed={selected}
-            class="flex cursor-pointer flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition {selected
+            class="flex cursor-pointer flex-col items-start gap-1 rounded-xl border px-2.5 py-2 text-left transition {selected
               ? 'border-logo-saffron bg-logo-saffron-soft/80 text-logo-saffron shadow-xs ring-1 ring-logo-saffron/40'
               : 'border-slate-200 bg-white text-slate-700 hover:border-logo-saffron-border hover:bg-slate-50'}"
           >
@@ -362,7 +431,7 @@
                 class={selected ? 'text-logo-saffron' : 'text-logo-green'}
               />
               {#if selected}
-                <Icon name="check-circle" size={14} class="text-logo-saffron" />
+                <Icon name="check-circle" size={13} class="text-logo-saffron" />
               {/if}
             </div>
             <span class="text-xs font-bold leading-tight {selected ? 'text-logo-saffron' : 'text-slate-900'}">
@@ -406,6 +475,25 @@
       onblur={() => handleFieldBlur('email')}
     />
 
+    <CountryCodePhoneInput
+      id="register-mobile"
+      label="Mobile Number"
+      bind:countryCode={mobileCountryCode}
+      bind:mobileNumber={mobileNumber}
+      required
+      disabled={isSubmitting}
+      countryCodeError={touched.mobileCountryCode || fieldErrors.mobileCountryCode
+        ? fieldErrors.mobileCountryCode
+        : undefined}
+      mobileNumberError={touched.mobileNumber || fieldErrors.mobileNumber
+        ? fieldErrors.mobileNumber
+        : undefined}
+      onCountryCodeInput={(val) => handleFieldInput('mobileCountryCode', val)}
+      onCountryCodeBlur={() => handleFieldBlur('mobileCountryCode')}
+      onMobileNumberInput={(val) => handleFieldInput('mobileNumber', val)}
+      onMobileNumberBlur={() => handleFieldBlur('mobileNumber')}
+    />
+
     <PasswordInput
       id="register-password"
       label={$t.auth.passwordLabel}
@@ -438,6 +526,9 @@
       <Icon name="arrow-right" size={18} />
     </Button>
   </form>
+
+  <Divider label={$t.auth.orRegisterEmail} />
+  <SocialLoginButton label={$t.auth.signupWithGoogle} redirectTo="/signup/plan" />
 
   {#snippet footer()}
     {$t.auth.alreadyHaveAccount}

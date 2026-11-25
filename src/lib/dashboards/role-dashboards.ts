@@ -11,11 +11,46 @@ import type { IconName } from '$lib/components/ui/Icon.svelte';
 export const EXTERNAL_DASHBOARD_ROLES: readonly AccountType[] = [
   'student',
   'researcher',
+  'scientist',
   'faculty',
   'industry',
-  'institution',
-  'mentor',
+  'startup',
+  'government',
+  'others',
 ] as const;
+
+export type DashboardTranslationRoleKey =
+  | 'student'
+  | 'researcher'
+  | 'faculty'
+  | 'industry'
+  | 'institution'
+  | 'mentor';
+
+export function resolveDashboardTranslationKey(
+  role: string | null | undefined,
+): DashboardTranslationRoleKey {
+  switch (role) {
+    case 'student':
+      return 'student';
+    case 'researcher':
+    case 'scientist':
+      return 'researcher';
+    case 'faculty':
+      return 'faculty';
+    case 'industry':
+    case 'startup':
+      return 'industry';
+    case 'government':
+    case 'institution':
+      return 'institution';
+    case 'others':
+    case 'mentor':
+      return 'mentor';
+    default:
+      return 'student';
+  }
+}
 
 export const INTERNAL_EXCLUDED_ROLES = [
   'super_admin',
@@ -279,6 +314,174 @@ export const ROLE_DASHBOARD_MAP: Record<AccountType, RoleDashboardDefinition> = 
     ],
   },
 
+  scientist: {
+    role: 'scientist',
+    shortLabel: 'Scientist',
+    badgeLabel: 'Scientist Workspace',
+    title: 'Applied Science & R&D Dashboard',
+    subtitle:
+      'Collaborate on experimental breakthroughs, open instrumentation, and translational R&D.',
+    href: '/dashboard/researcher',
+    icon: 'cpu',
+    primaryActionLabel: 'Publish Study',
+    stats: (c) => [
+      {
+        label: 'Research Artifacts',
+        value: c.researchArtifactsCount,
+        delta: 'Papers & datasets',
+        icon: 'flask',
+        color: 'violet',
+      },
+      {
+        label: 'Lab Projects',
+        value: c.projectsCount,
+        delta: 'Open collaborations',
+        icon: 'layers',
+        color: 'cyan',
+      },
+      {
+        label: 'Grants & Calls',
+        value: c.opportunitiesCount,
+        delta: 'Funding tracks',
+        icon: 'sparkles',
+        color: 'emerald',
+      },
+      {
+        label: 'STEM Profile',
+        value: `${c.completeness}%`,
+        delta: '25 domains · 86 fields',
+        icon: 'shield-check',
+        color: 'blue',
+      },
+    ],
+  },
+
+  startup: {
+    role: 'startup',
+    shortLabel: 'Startup',
+    badgeLabel: 'Startup Workspace',
+    title: 'Startup & Deep-Tech Builder Dashboard',
+    subtitle:
+      'Recruit technical builders, post R&D challenges, and showcase product milestones.',
+    href: '/dashboard/industry',
+    icon: 'rocket',
+    primaryActionLabel: 'Post Challenge',
+    stats: (c) => [
+      {
+        label: 'Active Projects',
+        value: c.projectsCount,
+        delta: 'Product builds',
+        icon: 'rocket',
+        color: 'blue',
+      },
+      {
+        label: 'Shortlisted Talent',
+        value: c.shortlistedCandidatesCount,
+        delta: 'Verified builders',
+        icon: 'users',
+        color: 'emerald',
+      },
+      {
+        label: 'Open Calls',
+        value: c.opportunitiesCount,
+        delta: 'Challenges & roles',
+        icon: 'briefcase',
+        color: 'amber',
+      },
+      {
+        label: 'Startup Profile',
+        value: `${c.completeness}%`,
+        delta: 'Verified identity',
+        icon: 'shield-check',
+        color: 'violet',
+      },
+    ],
+  },
+
+  government: {
+    role: 'government',
+    shortLabel: 'Government',
+    badgeLabel: 'Government Workspace',
+    title: 'Government & National Missions Dashboard',
+    subtitle:
+      'Coordinate public R&D challenges, national innovation missions, and verified cohorts.',
+    href: '/dashboard/institution',
+    icon: 'building',
+    primaryActionLabel: 'Launch Mission',
+    stats: (c) => [
+      {
+        label: 'Active Missions',
+        value: c.activeMissionsCount,
+        delta: 'Public programs',
+        icon: 'building',
+        color: 'emerald',
+      },
+      {
+        label: 'Submitted Projects',
+        value: c.projectsCount,
+        delta: 'Verified proof of work',
+        icon: 'folder-open',
+        color: 'blue',
+      },
+      {
+        label: 'Open Grants',
+        value: c.opportunitiesCount,
+        delta: 'Active calls',
+        icon: 'sparkles',
+        color: 'amber',
+      },
+      {
+        label: 'Agency Profile',
+        value: `${c.completeness}%`,
+        delta: 'Public mission hub',
+        icon: 'shield-check',
+        color: 'violet',
+      },
+    ],
+  },
+
+  others: {
+    role: 'others',
+    shortLabel: 'Others',
+    badgeLabel: 'Ecosystem Contributor Workspace',
+    title: 'Collab47 Innovation Workspace',
+    subtitle:
+      'Explore verified builds, collaborate with STEM teams, and share your domain expertise.',
+    href: '/dashboard/mentor',
+    icon: 'sparkles',
+    primaryActionLabel: 'Share Insight',
+    stats: (c) => [
+      {
+        label: 'Active Projects',
+        value: c.projectsCount,
+        delta: 'Across domains',
+        icon: 'compass',
+        color: 'violet',
+      },
+      {
+        label: 'Community Posts',
+        value: c.postsCount,
+        delta: `${c.totalWallLikes} likes`,
+        icon: 'message-square',
+        color: 'emerald',
+      },
+      {
+        label: 'Open Opportunities',
+        value: c.opportunitiesCount,
+        delta: 'Live calls',
+        icon: 'users',
+        color: 'amber',
+      },
+      {
+        label: 'Profile Strength',
+        value: `${c.completeness}%`,
+        delta: 'Ecosystem directory',
+        icon: 'shield-check',
+        color: 'blue',
+      },
+    ],
+  },
+
   mentor: {
     role: 'mentor',
     shortLabel: 'Mentor',
@@ -323,7 +526,7 @@ export const ROLE_DASHBOARD_MAP: Record<AccountType, RoleDashboardDefinition> = 
 };
 
 export function isExternalDashboardRole(role: string | null | undefined): role is AccountType {
-  return Boolean(role && (EXTERNAL_DASHBOARD_ROLES as readonly string[]).includes(role));
+  return Boolean(role && role in ROLE_DASHBOARD_MAP);
 }
 
 export function resolveExternalDashboardRole(role: string | null | undefined): AccountType {
