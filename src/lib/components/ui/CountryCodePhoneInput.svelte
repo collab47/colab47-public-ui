@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { COUNTRY_DIAL_CODES, type CountryDialCodeOption } from '$lib/data/country-codes';
+  import {
+    COUNTRY_DIAL_CODES,
+    getCountryFlagSrc,
+    type CountryDialCodeOption,
+  } from '$lib/data/country-codes';
 
   interface Props {
     id?: string;
@@ -33,6 +37,7 @@
 
   let dropdownOpen = $state(false);
   let searchQuery = $state('');
+  let selectedIso = $state<string | null>(null);
   let wrapperEl = $state<HTMLDivElement | null>(null);
 
   const filteredCountries = $derived.by(() => {
@@ -47,9 +52,17 @@
     );
   });
 
-  const activeIso = $derived(
-    COUNTRY_DIAL_CODES.find((c) => c.dialCode === countryCode.trim())?.iso ?? null,
-  );
+  const activeCountry = $derived.by<CountryDialCodeOption | null>(() => {
+    const trimmed = countryCode.trim();
+    if (!trimmed) return null;
+    if (selectedIso) {
+      const exact = COUNTRY_DIAL_CODES.find(
+        (c) => c.iso === selectedIso && c.dialCode === trimmed,
+      );
+      if (exact) return exact;
+    }
+    return COUNTRY_DIAL_CODES.find((c) => c.dialCode === trimmed) ?? null;
+  });
 
   const combinedError = $derived(countryCodeError || mobileNumberError);
 
@@ -64,6 +77,7 @@
     const raw = (event.currentTarget as HTMLInputElement).value;
     const sanitized = raw.replace(/[^+\d]/g, '').slice(0, 5);
     countryCode = sanitized;
+    selectedIso = null;
     searchQuery = sanitized;
     dropdownOpen = true;
     onCountryCodeInput?.(sanitized);
@@ -79,6 +93,7 @@
 
   function selectCountry(option: CountryDialCodeOption): void {
     countryCode = option.dialCode;
+    selectedIso = option.iso;
     searchQuery = '';
     dropdownOpen = false;
     onCountryCodeInput?.(option.dialCode);
@@ -124,12 +139,14 @@
           ? 'border-rose-400 focus-within:border-rose-500 focus-within:ring-rose-200'
           : 'border-slate-200 focus-within:border-logo-saffron focus-within:ring-logo-saffron/20'}"
       >
-        {#if activeIso}
-          <span
-            class="mr-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-600"
-          >
-            {activeIso}
-          </span>
+        {#if activeCountry}
+          <img
+            src={getCountryFlagSrc(activeCountry.iso)}
+            alt={activeCountry.country}
+            width="20"
+            height="15"
+            class="mr-2 h-3.5 w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-slate-200"
+          />
         {/if}
         <input
           id="{id}-country-code"
@@ -202,7 +219,7 @@
               </li>
             {:else}
               {#each filteredCountries as option (`${option.iso}-${option.dialCode}`)}
-                {@const isSelected = countryCode.trim() === option.dialCode && activeIso === option.iso}
+                {@const isSelected = activeCountry?.iso === option.iso}
                 <li>
                   <button
                     type="button"
@@ -217,9 +234,14 @@
                       : 'text-slate-700 hover:bg-slate-50'}"
                   >
                     <span class="flex min-w-0 items-center gap-2">
-                      <span class="w-6 shrink-0 font-mono text-[11px] font-bold text-slate-500">
-                        {option.iso}
-                      </span>
+                      <img
+                        src={getCountryFlagSrc(option.iso)}
+                        alt={option.country}
+                        width="20"
+                        height="15"
+                        loading="lazy"
+                        class="h-3.5 w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-slate-200"
+                      />
                       <span class="truncate">{option.country}</span>
                     </span>
                     <span class="shrink-0 font-mono font-semibold text-slate-900">

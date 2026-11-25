@@ -4,6 +4,10 @@ export interface CountryDialCodeOption {
   dialCode: string;
 }
 
+export function getCountryFlagSrc(iso: string): string {
+  return `/images/flags/${iso.toLowerCase()}.svg`;
+}
+
 export const COUNTRY_DIAL_CODES: readonly CountryDialCodeOption[] = [
   { iso: 'IN', country: 'India', dialCode: '+91' },
   { iso: 'US', country: 'United States', dialCode: '+1' },
