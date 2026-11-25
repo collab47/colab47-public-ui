@@ -386,8 +386,8 @@
 >
   <form class="flex flex-col gap-3.5" onsubmit={handleSubmit} novalidate>
     {#if invitePreview}
-      <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-950">
-        <div class="flex items-center gap-1.5 font-extrabold text-logo-green">
+      <div class="rounded-xl border border-[#DDD6FE] bg-[#F5F3FF] p-3.5 text-xs text-[#1E1B4B]">
+        <div class="flex items-center gap-1.5 font-extrabold text-[#5B3DF5]">
           <Icon name="sparkles" size={14} />
           <span>Project Contributor Invitation</span>
         </div>
