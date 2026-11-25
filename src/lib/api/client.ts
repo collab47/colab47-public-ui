@@ -36,6 +36,31 @@ export function getApiBaseUrl(): string {
   return (configured || 'http://localhost:4000/api/v1').replace(/\/+$/, '');
 }
 
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'confirmPassword',
+  'newPassword',
+  'currentPassword',
+  'refreshToken',
+  'accessToken',
+  'idToken',
+  'token',
+]);
+
+function redactSensitivePayload(body: unknown): unknown {
+  if (!body || typeof body !== 'object') {
+    return body;
+  }
+  if (Array.isArray(body)) {
+    return body.map((item) => redactSensitivePayload(item));
+  }
+  const safe: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    safe[key] = SENSITIVE_KEYS.has(key) ? '[REDACTED]' : redactSensitivePayload(value);
+  }
+  return safe;
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -134,14 +159,36 @@ export async function apiRequest<TResponse>(
     }
   }
 
-  const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+  const apiBaseUrl = getApiBaseUrl();
+  const url = `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const startedAt = Date.now();
+
+  console.info('[Collab47 API] ->', method, url, {
+    apiBaseUrl,
+    auth,
+    ...(body !== undefined ? { payload: redactSensitivePayload(body) } : {}),
   });
 
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (networkErr) {
+    console.error('[Collab47 API] NETWORK ERROR', method, url, {
+      durationMs: Date.now() - startedAt,
+      error: networkErr instanceof Error ? networkErr.message : String(networkErr),
+    });
+    throw networkErr;
+  }
+
+  const durationMs = Date.now() - startedAt;
+  const requestId = response.headers.get('x-request-id') ?? undefined;
+
   if (response.status === 401 && auth && retryOnUnauthorized) {
+    console.warn('[Collab47 API] 401 Unauthorized — attempting token refresh', method, url);
     const refreshed = await attemptTokenRefresh();
     if (refreshed) {
       return apiRequest<TResponse>(path, { ...options, retryOnUnauthorized: false });
@@ -159,8 +206,20 @@ export async function apiRequest<TResponse>(
         message: response.statusText || 'Request failed.',
       };
     }
+    console.error('[Collab47 API] x', response.status, method, url, {
+      durationMs,
+      requestId: payload.requestId ?? requestId,
+      errorCode: payload.errorCode,
+      message: payload.message,
+      details: payload.details,
+    });
     throw new ApiError(payload);
   }
+
+  console.info('[Collab47 API] <-', response.status, method, url, {
+    durationMs,
+    requestId,
+  });
 
   if (response.status === 204) {
     return undefined as TResponse;

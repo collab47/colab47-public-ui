@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { authApi } from '$lib/api/auth.api';
-  import { ApiError } from '$lib/api/client';
+  import { ApiError, getApiBaseUrl } from '$lib/api/client';
   import { projectsApi, type PublicInvitationPreview } from '$lib/api/projects.api';
   import type { AccountType, ExternalRoleOption } from '$lib/api/types';
   import { pushToast, setAuthSession, t } from '$lib/stores';
@@ -227,6 +227,14 @@
     }
 
     isSubmitting = true;
+    const registerEndpoint = `${getApiBaseUrl()}/auth/register`;
+    console.info('[Collab47 UI][Register] Submitting registration form', {
+      endpoint: registerEndpoint,
+      email: email.trim().toLowerCase(),
+      accountType,
+      hasInviteToken: Boolean(inviteToken),
+    });
+
     try {
       const response = await authApi.register({
         name: name.trim(),
@@ -235,6 +243,14 @@
         confirmPassword,
         accountType,
         inviteToken: inviteToken ?? undefined,
+      });
+
+      console.info('[Collab47 UI][Register] Registration succeeded', {
+        endpoint: registerEndpoint,
+        userId: response.user.id,
+        handle: response.user.handle,
+        accountType: response.user.accountType,
+        redirectTo: response.redirectTo,
       });
 
       const selectedRoleLabel =
@@ -256,6 +272,21 @@
       });
       await goto('/signup/plan');
     } catch (err) {
+      console.error('[Collab47 UI][Register] Registration failed', {
+        endpoint: registerEndpoint,
+        error:
+          err instanceof ApiError
+            ? {
+                statusCode: err.statusCode,
+                errorCode: err.errorCode,
+                message: err.message,
+                requestId: err.requestId,
+                fieldErrors: err.fieldErrors,
+              }
+            : err instanceof Error
+              ? err.message
+              : String(err),
+      });
       if (err instanceof ApiError) {
         formError = err.message;
         fieldErrors = {

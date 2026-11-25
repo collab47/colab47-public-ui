@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest, getApiBaseUrl } from './client';
 import type {
   AuthUser,
   LoginRequest,
@@ -17,6 +17,13 @@ export const authApi = {
   },
 
   register(payload: RegisterRequest): Promise<RegisterResponse> {
+    const fullEndpoint = `${getApiBaseUrl()}/auth/register`;
+    console.info('[Collab47 Auth] Calling Registration API:', {
+      method: 'POST',
+      endpoint: fullEndpoint,
+      email: payload.email,
+      accountType: payload.accountType,
+    });
     return apiRequest<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: payload,
@@ -24,6 +31,13 @@ export const authApi = {
   },
 
   login(payload: LoginRequest): Promise<LoginResponse> {
+    const fullEndpoint = `${getApiBaseUrl()}/auth/login`;
+    console.info('[Collab47 Auth] Calling Login API:', {
+      method: 'POST',
+      endpoint: fullEndpoint,
+      email: payload.email,
+      rememberMe: Boolean(payload.rememberMe),
+    });
     return apiRequest<LoginResponse>('/auth/login', {
       method: 'POST',
       body: payload,

@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { authApi } from '$lib/api/auth.api';
-  import { ApiError, ensureFreshSession } from '$lib/api/client';
+  import { ApiError, ensureFreshSession, getApiBaseUrl } from '$lib/api/client';
   import { getDashboardPath } from '$lib/dashboards/role-dashboards';
   import { authState, pushToast, setAuthSession, t } from '$lib/stores';
   import { validateEmail, validateLoginPassword } from '$lib/validation/auth.validation';
@@ -102,6 +102,12 @@
 
     isSubmitting = true;
     const nextParam = $page.url.searchParams.get('next') ?? undefined;
+    const loginEndpoint = `${getApiBaseUrl()}/auth/login`;
+    console.info('[Collab47 UI][Login] Submitting login form', {
+      endpoint: loginEndpoint,
+      email: email.trim().toLowerCase(),
+      rememberMe,
+    });
 
     try {
       const response = await authApi.login({
@@ -109,6 +115,14 @@
         password,
         rememberMe,
         next: nextParam,
+      });
+
+      console.info('[Collab47 UI][Login] Login succeeded', {
+        endpoint: loginEndpoint,
+        userId: response.user.id,
+        handle: response.user.handle,
+        accountType: response.user.accountType,
+        accountRestored: response.accountRestored,
       });
 
       setAuthSession(response.user, response.tokens, { rememberMe });
@@ -135,6 +149,20 @@
 
       await goto(targetPath);
     } catch (err) {
+      console.error('[Collab47 UI][Login] Login failed', {
+        endpoint: loginEndpoint,
+        error:
+          err instanceof ApiError
+            ? {
+                statusCode: err.statusCode,
+                errorCode: err.errorCode,
+                message: err.message,
+                requestId: err.requestId,
+              }
+            : err instanceof Error
+              ? err.message
+              : String(err),
+      });
       if (err instanceof ApiError) {
         formError = err.message;
         fieldErrors = {
