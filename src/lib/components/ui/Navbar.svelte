@@ -45,8 +45,16 @@
   }
 </script>
 
-<header class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-  <div class="flex h-17 w-full items-center justify-between gap-6 px-3 sm:px-4">
+<header
+  class="sticky top-0 z-50 backdrop-blur-xl transition-colors {isLandingPage
+    ? 'border-b border-white/10 bg-[#080416]/90 text-white'
+    : 'border-b border-slate-200 bg-white/95'}"
+>
+  <div
+    class="flex h-17 w-full items-center justify-between gap-6 {isLandingPage
+      ? 'c47-container'
+      : 'px-3 sm:px-4'}"
+  >
     <div class="flex items-center gap-2.5">
       {#if showSidebarToggle}
         <button
@@ -58,43 +66,60 @@
           <Icon name="panel-left" size={18} />
         </button>
       {/if}
-      <Wordmark size="md" href="/" />
+      <Wordmark size="md" tone={isLandingPage ? 'light' : 'dark'} href="/" />
     </div>
 
-    <nav class="hidden items-center gap-6 md:flex" aria-label="Primary Navigation">
+    <nav class="hidden items-center gap-7 md:flex" aria-label="Primary Navigation">
       <a
-        href="/#how-it-works"
-        class="text-sm font-semibold text-logo-saffron no-underline transition hover:text-logo-green hover:no-underline"
+        href="/#highlights"
+        class="text-sm font-medium no-underline transition hover:no-underline {isLandingPage
+          ? 'text-purple-100/80 hover:text-white'
+          : 'font-semibold text-logo-saffron hover:text-logo-green'}"
       >
         {$t.nav.about}
       </a>
       <a
         href="/#who"
-        class="text-sm font-semibold text-logo-saffron no-underline transition hover:text-logo-green hover:no-underline"
+        class="text-sm font-medium no-underline transition hover:no-underline {isLandingPage
+          ? 'text-purple-100/80 hover:text-white'
+          : 'font-semibold text-logo-saffron hover:text-logo-green'}"
       >
         {$t.nav.career}
       </a>
       <a
-        href="/#benefits"
-        class="text-sm font-semibold text-logo-saffron no-underline transition hover:text-logo-green hover:no-underline"
+        href="/#how-it-works"
+        class="text-sm font-medium no-underline transition hover:no-underline {isLandingPage
+          ? 'text-purple-100/80 hover:text-white'
+          : 'font-semibold text-logo-saffron hover:text-logo-green'}"
       >
         {$t.nav.events}
       </a>
     </nav>
 
-    <div class="hidden items-center gap-2.5 md:flex">
-      <LanguageSwitcher align="right" />
+    <div class="hidden items-center gap-3 md:flex">
+      <LanguageSwitcher align="right" tone={isLandingPage ? 'dark' : 'light'} />
       {#if !isLandingPage}
         <NotificationBell />
       {/if}
 
       {#if $isAuthenticated && $currentUser}
         {#if isLandingPage}
-          <Button variant="primary" size="sm" href={userDashboardHref}>
+          <a
+            href={userDashboardHref}
+            class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] py-1.5 pr-4 pl-2 text-sm font-semibold text-white no-underline shadow-[0_0_24px_rgba(139,92,246,0.5)] transition hover:brightness-110 hover:no-underline"
+          >
             <Avatar name={$currentUser.name} src={$currentUser.avatarUrl} size="sm" />
             <span>{$currentUser.name} · Continue</span>
             <Icon name="arrow-right" size={15} />
-          </Button>
+          </a>
+          <button
+            type="button"
+            onclick={handleLogout}
+            class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-purple-100 transition hover:border-white/35 hover:bg-white/10 hover:text-white"
+          >
+            <Icon name="log-out" size={15} />
+            <span>{$t.nav.signOut}</span>
+          </button>
         {:else}
           <a
             href="/profile"
@@ -103,11 +128,24 @@
             <Avatar name={$currentUser.name} src={$currentUser.avatarUrl} size="sm" />
             <span>@{$currentUser.handle}</span>
           </a>
+          <Button variant="outline" size="sm" onclick={handleLogout}>
+            <Icon name="log-out" size={15} />
+            <span>{$t.nav.signOut}</span>
+          </Button>
         {/if}
-        <Button variant="outline" size="sm" onclick={handleLogout}>
-          <Icon name="log-out" size={15} />
-          <span>{$t.nav.signOut}</span>
-        </Button>
+      {:else if isLandingPage}
+        <a
+          href="/login"
+          class="px-3 py-1.5 text-sm font-medium text-purple-100/90 no-underline transition hover:text-white hover:no-underline"
+        >
+          {$t.nav.signIn}
+        </a>
+        <a
+          href="/signup"
+          class="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-5 py-2 text-sm font-semibold text-white no-underline shadow-[0_0_24px_rgba(139,92,246,0.55)] transition hover:brightness-110 hover:no-underline"
+        >
+          <span>{$t.nav.signUp}</span>
+        </a>
       {:else}
         <Button variant="outline" size="sm" href="/login">
           <Icon name="log-in" size={15} />
@@ -121,13 +159,15 @@
     </div>
 
     <div class="flex items-center gap-2 md:hidden">
-      <LanguageSwitcher align="right" />
+      <LanguageSwitcher align="right" tone={isLandingPage ? 'dark' : 'light'} />
       {#if !isLandingPage}
         <NotificationBell />
       {/if}
       <button
         type="button"
-        class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-900"
+        class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border {isLandingPage
+          ? 'border-white/15 bg-white/5 text-white'
+          : 'border-slate-300 bg-white text-slate-900'}"
         aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={mobileOpen}
         onclick={() => (mobileOpen = !mobileOpen)}
@@ -138,14 +178,30 @@
   </div>
 
   {#if mobileOpen}
-    <div class="flex flex-col gap-3 border-t border-slate-200 bg-white px-5 py-4 md:hidden">
-      <a href="/#how-it-works" class="font-semibold text-logo-saffron" onclick={() => (mobileOpen = false)}>
+    <div
+      class="flex flex-col gap-3 border-t px-5 py-4 md:hidden {isLandingPage
+        ? 'border-white/10 bg-[#0A051A] text-white'
+        : 'border-slate-200 bg-white'}"
+    >
+      <a
+        href="/#highlights"
+        class="font-semibold {isLandingPage ? 'text-purple-100' : 'text-logo-saffron'}"
+        onclick={() => (mobileOpen = false)}
+      >
         {$t.nav.about}
       </a>
-      <a href="/#who" class="font-semibold text-logo-saffron" onclick={() => (mobileOpen = false)}>
+      <a
+        href="/#who"
+        class="font-semibold {isLandingPage ? 'text-purple-100' : 'text-logo-saffron'}"
+        onclick={() => (mobileOpen = false)}
+      >
         {$t.nav.career}
       </a>
-      <a href="/#benefits" class="font-semibold text-logo-saffron" onclick={() => (mobileOpen = false)}>
+      <a
+        href="/#how-it-works"
+        class="font-semibold {isLandingPage ? 'text-purple-100' : 'text-logo-saffron'}"
+        onclick={() => (mobileOpen = false)}
+      >
         {$t.nav.events}
       </a>
       {#if $isAuthenticated && $currentUser}

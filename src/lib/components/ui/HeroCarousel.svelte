@@ -20,16 +20,28 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import Avatar from './Avatar.svelte';
-  import Icon from './Icon.svelte';
+  import Icon, { type IconName } from './Icon.svelte';
 
   export let slides: readonly HeroCarouselSlide[] = [];
-  export let autoplayDuration = 5500;
+  export let autoplayDuration = 6000;
   export let isAuthenticated = false;
   export let userName = '';
   export let userAvatarUrl: string | null | undefined = undefined;
   export let continueHref = '/dashboard';
   export let signUpLabel = 'Sign Up';
+  export let signInLabel = 'Sign In';
   export let dpdpNote = '';
+
+  const ecosystemStrip: ReadonlyArray<{ label: string; icon: IconName }> = [
+    { label: 'Students', icon: 'graduation-cap' },
+    { label: 'Researchers', icon: 'flask' },
+    { label: 'Scientists', icon: 'cpu' },
+    { label: 'Faculty', icon: 'award' },
+    { label: 'Industry', icon: 'layers' },
+    { label: 'Startups', icon: 'rocket' },
+    { label: 'Government', icon: 'landmark' },
+    { label: 'Mentors', icon: 'shield-check' },
+  ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let CarouselComponent: any = null;
@@ -46,92 +58,196 @@
 </script>
 
 {#snippet slideContent(slide: HeroCarouselSlide, idx: number)}
-  <div
-    class="hero-slide-bg flex min-h-[560px] w-full items-center justify-center px-14 pt-14 pb-20 text-center sm:min-h-[620px] sm:px-24"
-  >
-    <div class="mx-auto flex w-full max-w-5xl flex-col items-center gap-6">
-      <span
-        class="hero-shimmer relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-fuchsia-300/60 bg-[#1B0638]/75 px-4 py-1.5 text-xs font-bold tracking-wide text-fuchsia-200 shadow-[0_4px_16px_rgba(15,5,36,0.6)] backdrop-blur-sm"
-      >
-        <span class="relative flex h-2 w-2" aria-hidden="true">
-          <span class="hero-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-300"></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-fuchsia-400"></span>
-        </span>
-        <span>{slide.badge}</span>
-      </span>
-
-      <svelte:element
-        this={idx === 0 ? 'h1' : 'h2'}
-        class="text-4xl leading-tight font-extrabold tracking-tight sm:text-5xl lg:text-7xl"
-      >
-        <span class="hero-text-shine">{slide.titlePrimary}</span>
-        <span class="hero-text-shine-accent block sm:inline">
-          {' '}{slide.titleSecondary}
-        </span>
-      </svelte:element>
-
-      <p class="hero-subtitle-glow text-lg font-extrabold text-fuchsia-200 sm:text-2xl">
-        {slide.subtitle}
-      </p>
-      <p class="hero-text-shadow max-w-3xl text-sm leading-relaxed font-semibold text-fuchsia-100 sm:text-lg">
-        {slide.description}
-      </p>
-
-      <div class="grid w-full max-w-xl grid-cols-3 gap-3 border-t border-fuchsia-300/35 pt-5">
-        {#each slide.stats as stat, i}
-          <div class="text-center {i > 0 ? 'border-l border-fuchsia-300/35 pl-3' : ''}">
-            <strong class="hero-text-shine-accent block text-xl font-extrabold tabular-nums sm:text-2xl">
-              {stat.value}
-            </strong>
-            <span class="hero-text-shadow text-xs font-bold text-fuchsia-100">{stat.label}</span>
-          </div>
-        {/each}
-      </div>
-
-      {#if isAuthenticated && userName}
-        <a
-          href={continueHref}
-          class="hero-btn-shine relative inline-flex min-h-12 items-center gap-3 overflow-hidden rounded-full border border-fuchsia-300/60 bg-gradient-to-r from-fuchsia-700 via-fuchsia-600 to-purple-600 px-6 py-2.5 text-base font-extrabold text-fuchsia-50 no-underline shadow-[0_10px_28px_rgba(15,5,36,0.65)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
+  <div class="w-full py-12 sm:py-16 lg:py-20">
+    <div
+      class="c47-container grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12"
+    >
+      <!-- Left Column: Display Headline, Existing Slogans, Glowing Pill CTA, & Hairline Stats -->
+      <div class="flex flex-col items-start text-left lg:col-span-7">
+        <span
+          class="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-400/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-purple-200 backdrop-blur-sm"
         >
-          <Avatar name={userName} src={userAvatarUrl} size="sm" />
-          <span>{userName} — Continue</span>
-          <Icon name="arrow-right" size={18} />
-        </a>
-      {:else}
-        <div class="flex flex-col items-center gap-3">
-          <p class="hero-text-shadow max-w-xl text-sm font-bold text-fuchsia-200 sm:text-base">
-            {slide.ctaPrompt}
-          </p>
-          <div class="flex flex-wrap items-center justify-center gap-3">
+          <span class="relative flex h-2 w-2" aria-hidden="true">
+            <span
+              class="hero-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400"
+            ></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-fuchsia-300"></span>
+          </span>
+          <span>{slide.badge}</span>
+        </span>
+
+        <svelte:element
+          this={idx === 0 ? 'h1' : 'h2'}
+          class="text-4xl leading-[1.08] font-semibold tracking-tight text-white sm:text-5xl lg:text-[62px]"
+        >
+          <span class="block">{slide.titlePrimary}</span>
+          <span class="hero-headline-shine block">{slide.titleSecondary}</span>
+        </svelte:element>
+
+        <p class="mt-5 max-w-xl text-base leading-relaxed font-medium text-purple-100/90 sm:text-lg">
+          {slide.subtitle}
+        </p>
+        <p class="mt-2.5 max-w-xl text-sm leading-relaxed text-purple-200/70 sm:text-base">
+          {slide.description}
+        </p>
+
+        <!-- Primary Glowing Purple Pill CTA + Inline Secondary Link -->
+        <div class="mt-7 flex flex-wrap items-center gap-5">
+          {#if isAuthenticated && userName}
+            <a
+              href={continueHref}
+              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
+            >
+              <Avatar name={userName} src={userAvatarUrl} size="sm" />
+              <span>{userName} — Continue</span>
+              <Icon name="arrow-right" size={17} />
+            </a>
+          {:else}
             <a
               href="/signup"
-              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-2.5 overflow-hidden rounded-full border border-fuchsia-300/60 bg-gradient-to-r from-fuchsia-700 via-fuchsia-600 to-purple-600 px-7 py-2.5 text-base font-extrabold text-fuchsia-50 no-underline shadow-[0_10px_28px_rgba(15,5,36,0.65)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline"
+              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-2.5 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
             >
-              <Icon name="user-plus" size={18} />
               <span>{signUpLabel} — It's Free</span>
-              <Icon name="arrow-right" size={18} />
+              <Icon name="arrow-right" size={16} />
             </a>
+            <a
+              href="/login"
+              class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-purple-100/90 no-underline transition hover:text-white hover:no-underline sm:text-base"
+            >
+              <span>{signInLabel}</span>
+            </a>
+          {/if}
+        </div>
+
+        <!-- Bottom Hairline-Divided Stats Row (matching new-dashboard.jpeg) -->
+        <div class="mt-10 flex flex-wrap items-center gap-6 sm:gap-8">
+          {#each slide.stats as stat, i}
+            <div class={i > 0 ? 'border-l border-white/15 pl-6 sm:pl-8' : ''}>
+              <strong
+                class="block text-2xl leading-none font-semibold tracking-tight tabular-nums text-white sm:text-3xl"
+              >
+                {stat.value}
+              </strong>
+              <span class="mt-1.5 block text-xs font-medium text-purple-200/65">
+                {stat.label}
+              </span>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Right Column: Rounded Neon-Lit Showcase Visual Card (matching new-dashboard.jpeg) -->
+      <div class="lg:col-span-5">
+        <div
+          class="group relative mx-auto aspect-[4/3] w-full max-w-[480px] overflow-hidden rounded-[24px] border border-purple-400/30 bg-[#12072B] shadow-[0_24px_80px_rgba(124,58,237,0.38)]"
+        >
+          <img
+            src="/images/carasoul-bg.png"
+            alt="Collab47 Innovation Workspace"
+            width="1600"
+            height="800"
+            fetchpriority={idx === 0 ? 'high' : 'low'}
+            loading={idx === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            class="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 select-none"
+          />
+          <div
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#090418]/85 via-transparent to-purple-900/15"
+          ></div>
+
+          <!-- Top-Left Live Status Chip inside Showcase Frame -->
+          <div class="absolute top-4 left-4 right-4 flex items-center justify-between gap-2">
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-[#0A041C]/70 px-3 py-1 text-[11px] font-semibold text-purple-100 backdrop-blur-md"
+            >
+              <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400"></span>
+              <span>Viksit Bharat 2047</span>
+            </span>
+            <span
+              class="rounded-full border border-purple-300/25 bg-[#0A041C]/70 px-2.5 py-1 text-[11px] font-semibold text-purple-200 backdrop-blur-md"
+            >
+              0{idx + 1} / 0{slides.length}
+            </span>
+          </div>
+
+          <!-- Bottom Glass Caption Strip inside Showcase Frame -->
+          <div
+            class="absolute right-4 bottom-4 left-4 rounded-2xl border border-white/15 bg-[#0B051E]/75 px-4 py-3 backdrop-blur-md"
+          >
+            <p class="text-xs leading-relaxed font-medium text-purple-100/95">
+              {slide.ctaPrompt}
+            </p>
           </div>
         </div>
-      {/if}
-
-      {#if dpdpNote}
-        <p
-          id={idx === 0 ? 'dpdp' : undefined}
-          class="rounded-full border border-fuchsia-300/45 bg-[#1B0638]/75 px-4 py-1 text-xs font-semibold text-fuchsia-100 shadow-[0_4px_14px_rgba(15,5,36,0.55)] backdrop-blur-sm"
-        >
-          {dpdpNote}
-        </p>
-      {/if}
+      </div>
     </div>
   </div>
 {/snippet}
 
 <section
-  class="hero-carousel-section relative w-full overflow-hidden border-b border-white/15 text-white"
-  aria-label="Collab47 hero carousel"
+  class="hero-shell relative w-full overflow-hidden bg-[#070312] text-white"
+  aria-label="Collab47 hero section"
 >
-  <div class="hero-sc-root relative z-10 w-full">
+  <!-- Flowing Neon Purple & Magenta Silk-Wave Ribbons (matching new-dashboard.jpeg) -->
+  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div class="hero-orb hero-orb-top"></div>
+    <div class="hero-orb hero-orb-right"></div>
+    <div class="hero-orb hero-orb-bottom"></div>
+
+    <svg
+      class="absolute inset-0 h-full w-full opacity-85"
+      viewBox="0 0 1440 760"
+      preserveAspectRatio="xMidYMid slice"
+      fill="none"
+    >
+      <defs>
+        <linearGradient id="silkWaveA" x1="25%" y1="0%" x2="88%" y2="100%">
+          <stop offset="0%" stop-color="#4C1D95" stop-opacity="0" />
+          <stop offset="35%" stop-color="#9333EA" stop-opacity="0.55" />
+          <stop offset="65%" stop-color="#D946EF" stop-opacity="0.72" />
+          <stop offset="100%" stop-color="#6D28D9" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id="silkWaveB" x1="10%" y1="30%" x2="95%" y2="90%">
+          <stop offset="0%" stop-color="#6D28D9" stop-opacity="0" />
+          <stop offset="45%" stop-color="#A855F7" stop-opacity="0.48" />
+          <stop offset="75%" stop-color="#E879F9" stop-opacity="0.58" />
+          <stop offset="100%" stop-color="#3B0764" stop-opacity="0" />
+        </linearGradient>
+        <filter id="silkBlur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="24" />
+        </filter>
+      </defs>
+
+      <!-- Sweeping diagonal silk wave ribbon -->
+      <path
+        d="M 520 -60 C 660 220, 860 440, 1260 820 L 1460 820 C 1100 450, 880 210, 740 -60 Z"
+        fill="url(#silkWaveA)"
+        filter="url(#silkBlur)"
+      />
+      <!-- Soft horizontal-curved lower neon wave -->
+      <path
+        d="M -120 620 C 260 360, 740 310, 1340 780 L 1120 840 C 660 490, 260 520, -120 740 Z"
+        fill="url(#silkWaveB)"
+        filter="url(#silkBlur)"
+      />
+      <!-- Fine bright magenta silk highlight edge -->
+      <path
+        d="M 610 -40 C 740 230, 960 450, 1380 790"
+        stroke="#F0ABFC"
+        stroke-opacity="0.45"
+        stroke-width="2"
+      />
+      <path
+        d="M -60 660 C 310 420, 740 390, 1260 770"
+        stroke="#C084FC"
+        stroke-opacity="0.35"
+        stroke-width="1.5"
+      />
+    </svg>
+  </div>
+
+  <!-- Hero Carousel Slides -->
+  <div class="hero-sc-root relative z-10 w-full pb-8">
     {#if browser && CarouselComponent}
       <svelte:component
         this={CarouselComponent}
@@ -148,15 +264,15 @@
         <div
           slot="prev"
           let:showPrevPage
-          class="absolute top-1/2 left-3 z-20 -translate-y-1/2 sm:left-6"
+          class="absolute top-1/2 left-2 z-20 hidden -translate-y-1/2 xl:block xl:left-4"
         >
           <button
             type="button"
             on:click={showPrevPage}
             aria-label="Previous slide"
-            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-[#2e1065]/55 text-white backdrop-blur-md transition hover:border-white/55 hover:bg-[#7C3AED] sm:h-11 sm:w-11"
+            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
           >
-            <Icon name="chevron-left" size={20} />
+            <Icon name="chevron-left" size={18} />
           </button>
         </div>
 
@@ -167,15 +283,15 @@
         <div
           slot="next"
           let:showNextPage
-          class="absolute top-1/2 right-3 z-20 -translate-y-1/2 sm:right-6"
+          class="absolute top-1/2 right-2 z-20 hidden -translate-y-1/2 xl:block xl:right-4"
         >
           <button
             type="button"
             on:click={showNextPage}
             aria-label="Next slide"
-            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-[#2e1065]/55 text-white backdrop-blur-md transition hover:border-white/55 hover:bg-[#7C3AED] sm:h-11 sm:w-11"
+            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
           >
-            <Icon name="chevron-right" size={20} />
+            <Icon name="chevron-right" size={18} />
           </button>
         </div>
 
@@ -184,7 +300,7 @@
           let:currentPageIndex
           let:pagesCount
           let:showPage
-          class="absolute right-0 bottom-5 left-0 z-20 flex items-center justify-center gap-2.5"
+          class="mt-1 flex items-center justify-center gap-2.5"
         >
           {#each Array(pagesCount || slides.length) as _, pageIndex (pageIndex)}
             <button
@@ -192,119 +308,108 @@
               on:click={() => showPage(pageIndex)}
               aria-label="Go to slide {pageIndex + 1}"
               aria-current={currentPageIndex === pageIndex ? 'true' : undefined}
-              class="h-2.5 cursor-pointer rounded-full transition-all duration-300 {currentPageIndex ===
+              class="h-2 cursor-pointer rounded-full transition-all duration-300 {currentPageIndex ===
               pageIndex
-                ? 'w-9 bg-gradient-to-r from-[#E9D5FF] to-[#A855F7] shadow-[0_0_12px_rgba(192,132,252,0.85)]'
-                : 'w-2.5 bg-white/40 hover:bg-white/75'}"
+                ? 'w-8 bg-gradient-to-r from-[#A855F7] to-[#E879F9] shadow-[0_0_12px_rgba(192,132,252,0.85)]'
+                : 'w-2 bg-white/25 hover:bg-white/60'}"
             ></button>
           {/each}
         </div>
       </svelte:component>
     {:else if slides[0]}
       {@render slideContent(slides[0], 0)}
-
-      <div
-        class="pointer-events-none absolute right-0 bottom-5 left-0 z-20 flex items-center justify-center gap-2.5"
-        aria-hidden="true"
-      >
+      <div class="mt-1 flex items-center justify-center gap-2.5" aria-hidden="true">
         {#each slides as slide, idx (slide.id)}
           <span
-            class="h-2.5 rounded-full {idx === 0
-              ? 'w-9 bg-gradient-to-r from-[#E9D5FF] to-[#A855F7]'
-              : 'w-2.5 bg-white/40'}"
+            class="h-2 rounded-full {idx === 0
+              ? 'w-8 bg-gradient-to-r from-[#A855F7] to-[#E879F9]'
+              : 'w-2 bg-white/25'}"
           ></span>
         {/each}
       </div>
     {/if}
   </div>
+
+  <!-- Bottom Muted Ecosystem Trust Bar (directly matching new-dashboard.jpeg footer strip) -->
+  <div class="relative z-10 border-t border-white/10 bg-[#0A051A]/85 backdrop-blur-md">
+    <div class="c47-container py-5">
+      <div
+        class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs font-semibold tracking-wide text-purple-200/50"
+      >
+        {#each ecosystemStrip as item (item.label)}
+          <span class="inline-flex items-center gap-2 transition hover:text-purple-100/90">
+            <Icon name={item.icon} size={15} class="text-purple-400/70" />
+            <span>{item.label}</span>
+          </span>
+        {/each}
+      </div>
+      {#if dpdpNote}
+        <p id="dpdp" class="mt-3 text-center text-[11px] font-medium text-purple-200/45 lg:text-left">
+          {dpdpNote}
+        </p>
+      {/if}
+    </div>
+  </div>
 </section>
 
 <style>
-  .hero-carousel-section {
+  .hero-shell {
     contain: layout paint;
-    background-color: #1a0b2e;
   }
 
-  .hero-slide-bg {
-    background-image: url('/images/carasoul-bg.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+  .hero-orb {
+    position: absolute;
+    border-radius: 9999px;
+    will-change: transform, opacity;
   }
 
-  .hero-text-shine {
+  .hero-orb-top {
+    top: -180px;
+    left: 26%;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(circle, rgba(147, 51, 234, 0.36) 0%, rgba(147, 51, 234, 0) 70%);
+  }
+
+  .hero-orb-right {
+    top: 10%;
+    right: -140px;
+    width: 580px;
+    height: 580px;
+    background: radial-gradient(circle, rgba(217, 70, 239, 0.34) 0%, rgba(217, 70, 239, 0) 68%);
+  }
+
+  .hero-orb-bottom {
+    bottom: -220px;
+    left: 12%;
+    width: 720px;
+    height: 460px;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.32) 0%, rgba(124, 58, 237, 0) 72%);
+  }
+
+  .hero-headline-shine {
     background-image: linear-gradient(
-      180deg,
-      #fae8ff 0%,
-      #f5d0fe 32%,
-      #ffffff 48%,
-      #f0abfc 56%,
-      #fae8ff 100%
+      110deg,
+      #ffffff 0%,
+      #e9d5ff 34%,
+      #ffffff 50%,
+      #d8b4fe 62%,
+      #ffffff 100%
     );
     background-size: 240% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    filter: drop-shadow(0 2px 6px rgba(15, 5, 36, 0.95))
-      drop-shadow(0 6px 20px rgba(15, 5, 36, 0.85));
-    animation: heroTextShine 4.2s linear infinite;
+    animation: heroHeadlineShine 5s linear infinite;
   }
 
-  .hero-text-shine-accent {
-    background-image: linear-gradient(
-      180deg,
-      #f0abfc 0%,
-      #e879f9 28%,
-      #ffffff 48%,
-      #f5d0fe 58%,
-      #f0abfc 100%
-    );
-    background-size: 240% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 2px 6px rgba(15, 5, 36, 0.95))
-      drop-shadow(0 6px 22px rgba(15, 5, 36, 0.9));
-    animation: heroTextShine 3.6s linear infinite;
-    animation-delay: -0.9s;
-  }
-
-  @keyframes heroTextShine {
+  @keyframes heroHeadlineShine {
     0% {
       background-position: 200% center;
     }
     100% {
       background-position: -200% center;
     }
-  }
-
-  .hero-subtitle-glow {
-    text-shadow:
-      0 1px 6px rgba(15, 5, 36, 0.98),
-      0 3px 18px rgba(15, 5, 36, 0.9),
-      0 0 14px rgba(240, 171, 252, 0.45);
-    animation: heroSubtitleGlow 3.2s ease-in-out infinite alternate;
-  }
-
-  @keyframes heroSubtitleGlow {
-    0% {
-      text-shadow:
-        0 1px 6px rgba(15, 5, 36, 0.98),
-        0 3px 18px rgba(15, 5, 36, 0.9),
-        0 0 8px rgba(240, 171, 252, 0.25);
-    }
-    100% {
-      text-shadow:
-        0 1px 6px rgba(15, 5, 36, 0.98),
-        0 3px 18px rgba(15, 5, 36, 0.9),
-        0 0 22px rgba(245, 208, 254, 0.85);
-    }
-  }
-
-  .hero-text-shadow {
-    text-shadow:
-      0 1px 6px rgba(15, 5, 36, 0.98),
-      0 3px 18px rgba(15, 5, 36, 0.9);
   }
 
   .hero-btn-shine::after {
@@ -315,19 +420,37 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.35) 50%,
+      rgba(255, 255, 255, 0.32) 50%,
       transparent 100%
     );
-    animation: heroBtnShine 3.6s ease-in-out infinite;
+    animation: heroBtnSweep 3.8s ease-in-out infinite;
     pointer-events: none;
   }
 
-  @keyframes heroBtnShine {
-    0%, 55% {
+  @keyframes heroBtnSweep {
+    0%,
+    55% {
       transform: translateX(-120%) skewX(-18deg);
     }
     100% {
       transform: translateX(140%) skewX(-18deg);
+    }
+  }
+
+  .hero-ping {
+    will-change: transform, opacity;
+    animation: heroPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes heroPing {
+    0% {
+      transform: scale(1);
+      opacity: 0.85;
+    }
+    75%,
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
     }
   }
 
@@ -343,37 +466,10 @@
     flex-shrink: 0;
   }
 
-  .hero-ping {
-    will-change: transform, opacity;
-    animation: heroPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
-  }
-
-  @keyframes heroPing {
-    0% { transform: scale(1); opacity: 0.8; }
-    75%, 100% { transform: scale(2.4); opacity: 0; }
-  }
-
-  .hero-shimmer::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.24) 50%, transparent 100%);
-    animation: heroShimmer 4.5s ease-in-out infinite;
-  }
-
-  @keyframes heroShimmer {
-    0%, 60% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .hero-ping,
-    .hero-shimmer::after,
-    .hero-text-shine,
-    .hero-text-shine-accent,
-    .hero-subtitle-glow,
-    .hero-btn-shine::after {
+    .hero-headline-shine,
+    .hero-btn-shine::after,
+    .hero-ping {
       animation: none !important;
     }
   }

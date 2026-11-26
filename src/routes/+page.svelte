@@ -4,8 +4,6 @@
   import { currentUser, isAuthenticated, t } from '$lib/stores';
   import {
     Avatar,
-    Button,
-    Card,
     Footer,
     GoogleAdSlot,
     HeroCarousel,
@@ -17,16 +15,6 @@
   const continueHref = $derived(
     $currentUser ? getDashboardPath($currentUser.accountType) : '/dashboard',
   );
-
-  type CardColor =
-    | 'blue'
-    | 'emerald'
-    | 'violet'
-    | 'amber'
-    | 'rose'
-    | 'cyan'
-    | 'indigo'
-    | 'teal';
 
   const heroSlides = $derived<readonly HeroCarouselSlide[]>([
     {
@@ -92,7 +80,7 @@
   function scrollHighlights(direction: 'prev' | 'next'): void {
     if (!highlightsScrollEl) return;
     highlightsScrollEl.scrollBy({
-      left: direction === 'next' ? 316 : -316,
+      left: direction === 'next' ? 324 : -324,
       behavior: 'smooth',
     });
   }
@@ -103,173 +91,144 @@
     return () => window.removeEventListener('resize', syncScrollState);
   });
 
-  const highlightStyles: ReadonlyArray<{
+  const highlightMeta: ReadonlyArray<{
     id: string;
     icon: IconName;
-    color: CardColor;
-    titleClass: string;
-    textClass: string;
-    iconClass: string;
+    accentClass: string;
+    tagClass: string;
   }> = [
     {
       id: 'workbench',
       icon: 'layers',
-      color: 'violet',
-      titleClass: 'text-violet-950',
-      textClass: 'text-violet-700',
-      iconClass: 'bg-violet-100 text-violet-700',
+      accentClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
+      tagClass: 'text-violet-300',
     },
     {
       id: 'taxonomy',
       icon: 'cpu',
-      color: 'rose',
-      titleClass: 'text-fuchsia-950',
-      textClass: 'text-fuchsia-700',
-      iconClass: 'bg-fuchsia-100 text-fuchsia-700',
+      accentClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
+      tagClass: 'text-fuchsia-300',
     },
     {
       id: 'proof',
       icon: 'shield-check',
-      color: 'violet',
-      titleClass: 'text-purple-950',
-      textClass: 'text-purple-700',
-      iconClass: 'bg-purple-100 text-purple-700',
+      accentClass: 'bg-purple-500/15 text-purple-300 border-purple-400/25',
+      tagClass: 'text-purple-300',
     },
     {
       id: 'industry',
       icon: 'rocket',
-      color: 'rose',
-      titleClass: 'text-fuchsia-950',
-      textClass: 'text-fuchsia-700',
-      iconClass: 'bg-fuchsia-100 text-fuchsia-700',
+      accentClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
+      tagClass: 'text-fuchsia-300',
     },
     {
       id: 'mentors',
       icon: 'award',
-      color: 'violet',
-      titleClass: 'text-violet-950',
-      textClass: 'text-violet-700',
-      iconClass: 'bg-violet-100 text-violet-700',
+      accentClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
+      tagClass: 'text-violet-300',
     },
   ];
 
-  const audienceStyles: ReadonlyArray<{
+  const audienceMeta: ReadonlyArray<{
     id: string;
     icon: IconName;
-    color: CardColor;
-    titleClass: string;
-    textClass: string;
     iconClass: string;
+    tagClass: string;
   }> = [
     {
       id: 'students',
       icon: 'graduation-cap',
-      color: 'violet',
-      titleClass: 'text-violet-950',
-      textClass: 'text-violet-700',
-      iconClass: 'bg-violet-100 text-violet-700',
+      iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
+      tagClass: 'text-violet-300',
     },
     {
       id: 'industry_startups',
       icon: 'rocket',
-      color: 'rose',
-      titleClass: 'text-fuchsia-950',
-      textClass: 'text-fuchsia-700',
-      iconClass: 'bg-fuchsia-100 text-fuchsia-700',
+      iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
+      tagClass: 'text-fuchsia-300',
     },
     {
       id: 'researchers_faculty',
       icon: 'flask',
-      color: 'violet',
-      titleClass: 'text-purple-950',
-      textClass: 'text-purple-700',
-      iconClass: 'bg-purple-100 text-purple-700',
+      iconClass: 'bg-purple-500/15 text-purple-300 border-purple-400/25',
+      tagClass: 'text-purple-300',
     },
     {
       id: 'government_institutions',
       icon: 'landmark',
-      color: 'rose',
-      titleClass: 'text-fuchsia-950',
-      textClass: 'text-fuchsia-700',
-      iconClass: 'bg-fuchsia-100 text-fuchsia-700',
+      iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
+      tagClass: 'text-fuchsia-300',
     },
     {
       id: 'professionals_mentors',
       icon: 'award',
-      color: 'violet',
-      titleClass: 'text-violet-950',
-      textClass: 'text-violet-700',
-      iconClass: 'bg-violet-100 text-violet-700',
+      iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
+      tagClass: 'text-violet-300',
     },
   ];
 
-  const pillarStyles: ReadonlyArray<{
+  const pillarMeta: ReadonlyArray<{
     step: string;
     icon: IconName;
-    color: CardColor;
-    titleClass: string;
-    textClass: string;
     iconClass: string;
   }> = [
     {
       step: '01',
       icon: 'layers',
-      color: 'violet',
-      titleClass: 'text-violet-950',
-      textClass: 'text-violet-700',
-      iconClass: 'bg-violet-100 text-violet-700',
+      iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
     },
     {
       step: '02',
       icon: 'cpu',
-      color: 'rose',
-      titleClass: 'text-fuchsia-950',
-      textClass: 'text-fuchsia-700',
-      iconClass: 'bg-fuchsia-100 text-fuchsia-700',
+      iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
     },
     {
       step: '03',
       icon: 'shield-check',
-      color: 'violet',
-      titleClass: 'text-purple-950',
-      textClass: 'text-purple-700',
-      iconClass: 'bg-purple-100 text-purple-700',
+      iconClass: 'bg-purple-500/15 text-purple-300 border-purple-400/25',
     },
   ];
 </script>
 
 <svelte:head>
   <title>Collab47: {$t.home.heroTitlePrimary} {$t.home.heroTitleSecondary}</title>
-  <link rel="preload" as="image" type="image/png" href="/images/carasoul-bg.png" fetchpriority="high" />
+  <link
+    rel="preload"
+    as="image"
+    type="image/png"
+    href="/images/carasoul-bg.png"
+    fetchpriority="high"
+  />
 </svelte:head>
 
-<main class="w-full">
-  <!-- Section 1: Hero Section Itself IS a Full-Width Centered svelte-carousel with carasoul-bg.png -->
+<main class="w-full bg-[#070312] text-white">
+  <!-- Section 1: Revamped Dark Futuristic Hero Carousel (styled after new-dashboard.jpeg) -->
   <HeroCarousel
     slides={heroSlides}
-    autoplayDuration={5500}
+    autoplayDuration={6000}
     isAuthenticated={$isAuthenticated}
     userName={$currentUser?.name ?? ''}
     userAvatarUrl={$currentUser?.avatarUrl}
     {continueHref}
     signUpLabel={$t.nav.signUp}
+    signInLabel={$t.auth.signInLink}
     dpdpNote={$t.home.dpdpNote}
   />
 
-  <!-- Section 2: Dedicated Arrow-Scrolled Platform Highlights Section (Magenta / Violet Soft Surface) -->
-  <section id="highlights" class="border-b border-[#E9D5FF] bg-[#FAF5FF] py-14">
+  <!-- Section 2: Platform Highlights (Dark Obsidian-Violet Glass Cards) -->
+  <section id="highlights" class="relative border-b border-white/10 bg-[#090418] py-18">
     <div class="c47-container">
-      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div class="flex max-w-2xl flex-col items-start gap-2">
+      <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div class="flex max-w-2xl flex-col items-start gap-2.5">
           <span
-            class="inline-flex items-center rounded-full border border-[#E9D5FF] bg-[#F3E8FF] px-3 py-1 text-xs font-bold tracking-wide text-[#7C3AED]"
+            class="inline-flex items-center rounded-full border border-purple-400/30 bg-purple-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-purple-200"
           >
             {$t.home.highlightsBadge}
           </span>
-          <h2 class="text-2xl font-extrabold tracking-tight text-[#2E1065] sm:text-3xl">
+          <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             {$t.home.highlightsTitle}
           </h2>
-          <p class="text-sm font-medium text-slate-600 sm:text-base">
+          <p class="text-sm font-normal text-purple-200/70 sm:text-base">
             {$t.home.highlightsSubtitle}
           </p>
         </div>
@@ -277,7 +236,7 @@
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex h-9.5 w-9.5 cursor-pointer items-center justify-center rounded-full border border-[#DDD6FE] bg-[#F3E8FF] text-[#7C3AED] transition hover:border-[#7C3AED] hover:bg-[#7C3AED] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-white/5 text-purple-200 transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
             onclick={() => scrollHighlights('prev')}
             disabled={!canScrollPrev}
             aria-label="Previous highlight"
@@ -286,7 +245,7 @@
           </button>
           <button
             type="button"
-            class="inline-flex h-9.5 w-9.5 cursor-pointer items-center justify-center rounded-full border border-[#F5D0FE] bg-[#FDF4FF] text-[#A21CAF] transition hover:border-[#C026D3] hover:bg-[#C026D3] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-white/5 text-fuchsia-200 transition hover:border-fuchsia-400/60 hover:bg-[#A855F7] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
             onclick={() => scrollHighlights('next')}
             disabled={!canScrollNext}
             aria-label="Next highlight"
@@ -303,131 +262,147 @@
         role="region"
         aria-label="Platform highlights"
       >
-        {#each highlightStyles as style, idx (style.id)}
+        {#each highlightMeta as style, idx (style.id)}
           {@const copy = $t.home.highlights[idx]}
-          <div class="w-[300px] shrink-0 snap-start">
-            <Card color={style.color} padding="md">
-              <div class="flex flex-col items-start gap-3">
-                <div class="flex w-full items-center justify-between gap-2">
-                  <span
-                    class="inline-flex h-10.5 w-10.5 items-center justify-center rounded-xl {style.iconClass}"
-                  >
-                    <Icon name={style.icon} size={20} />
-                  </span>
-                  <span class="text-xs font-bold tracking-wide uppercase {style.textClass}">
-                    {copy?.tag}
-                  </span>
-                </div>
-                <h3 class="text-base font-bold {style.titleClass}">{copy?.title}</h3>
-                <p class="text-sm leading-relaxed {style.textClass}">{copy?.subtitle}</p>
+          <article
+            class="w-[308px] shrink-0 snap-start rounded-2xl border border-white/10 bg-[#12082B]/75 p-5 backdrop-blur-md transition duration-300 hover:border-purple-400/45 hover:bg-[#170B36] hover:shadow-[0_12px_40px_rgba(124,58,237,0.22)]"
+          >
+            <div class="flex flex-col items-start gap-3.5">
+              <div class="flex w-full items-center justify-between gap-2">
+                <span
+                  class="inline-flex h-11 w-11 items-center justify-center rounded-xl border {style.accentClass}"
+                >
+                  <Icon name={style.icon} size={20} />
+                </span>
+                <span class="text-[11px] font-bold tracking-wider uppercase {style.tagClass}">
+                  {copy?.tag}
+                </span>
               </div>
-            </Card>
-          </div>
+              <h3 class="text-base font-bold text-white">{copy?.title}</h3>
+              <p class="text-sm leading-relaxed text-purple-200/70">{copy?.subtitle}</p>
+            </div>
+          </article>
         {/each}
       </div>
     </div>
   </section>
 
   <!-- Section 3: Audience Section ("Who Is It For?") -->
-  <section id="who" class="bg-white py-16">
+  <section id="who" class="relative border-b border-white/10 bg-[#070312] py-18">
     <div class="c47-container">
-      <div class="mb-8 flex max-w-2xl flex-col items-start gap-2.5">
+      <div class="mb-10 flex max-w-2xl flex-col items-start gap-2.5">
         <span
-          class="inline-flex items-center rounded-full border border-[#F5D0FE] bg-[#FDF4FF] px-3 py-1 text-xs font-bold tracking-wide text-[#A21CAF]"
+          class="inline-flex items-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-fuchsia-200"
         >
           {$t.home.whoBadge}
         </span>
-        <h2 class="text-2xl font-extrabold tracking-tight text-[#2E1065] sm:text-3xl">
+        <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {$t.home.whoTitle}
         </h2>
-        <p class="text-base font-medium text-slate-600">
+        <p class="text-sm font-normal text-purple-200/70 sm:text-base">
           {$t.home.whoSubtitle}
         </p>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {#each audienceStyles as style, idx (style.id)}
+        {#each audienceMeta as style, idx (style.id)}
           {@const copy = $t.home.audiences[idx]}
-          <Card color={style.color} padding="md">
-            <div class="flex flex-col items-start gap-3">
+          <article
+            class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#100726]/80 p-5 transition duration-300 hover:border-fuchsia-400/45 hover:bg-[#160A33] hover:shadow-[0_14px_40px_rgba(147,51,234,0.2)]"
+          >
+            <div
+              class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-violet-500/0 via-purple-400/70 to-fuchsia-400/0 opacity-0 transition group-hover:opacity-100"
+              aria-hidden="true"
+            ></div>
+            <div class="flex flex-col items-start gap-3.5">
               <div class="flex w-full items-center justify-between gap-2">
                 <span
-                  class="inline-flex h-10.5 w-10.5 items-center justify-center rounded-xl {style.iconClass}"
+                  class="inline-flex h-11 w-11 items-center justify-center rounded-xl border {style.iconClass}"
                 >
                   <Icon name={style.icon} size={20} />
                 </span>
-                <span class="text-xs font-bold tracking-wide uppercase {style.textClass}">
+                <span class="text-[11px] font-bold tracking-wider uppercase {style.tagClass}">
                   {copy?.badge}
                 </span>
               </div>
-              <h3 class="text-base font-bold {style.titleClass}">{copy?.title}</h3>
-              <p class="text-sm leading-relaxed {style.textClass}">{copy?.description}</p>
+              <h3 class="text-base font-bold text-white">{copy?.title}</h3>
+              <p class="text-sm leading-relaxed text-purple-200/70">{copy?.description}</p>
             </div>
-          </Card>
+          </article>
         {/each}
       </div>
     </div>
   </section>
 
   <!-- Section 4: How It Works Section -->
-  <section id="how-it-works" class="border-y border-[#E9D5FF] bg-[#FAF5FF] py-16">
+  <section id="how-it-works" class="relative border-b border-white/10 bg-[#090418] py-18">
     <div class="c47-container">
-      <div class="mb-8 flex max-w-2xl flex-col items-start gap-2.5">
+      <div class="mb-10 flex max-w-2xl flex-col items-start gap-2.5">
         <span
-          class="inline-flex items-center rounded-full border border-[#E9D5FF] bg-[#F3E8FF] px-3 py-1 text-xs font-bold tracking-wide text-[#7C3AED]"
+          class="inline-flex items-center rounded-full border border-purple-400/30 bg-purple-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-purple-200"
         >
           {$t.home.howBadge}
         </span>
-        <h2 class="text-2xl font-extrabold tracking-tight text-[#2E1065] sm:text-3xl">
+        <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {$t.home.howTitle}
         </h2>
-        <p class="text-base font-medium text-slate-600">
+        <p class="text-sm font-normal text-purple-200/70 sm:text-base">
           {$t.home.howSubtitle}
         </p>
       </div>
 
       <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-        {#each pillarStyles as style, idx (style.step)}
+        {#each pillarMeta as style, idx (style.step)}
           {@const copy = $t.home.pillars[idx]}
-          <Card color={style.color} padding="md">
-            <div class="flex flex-col items-start gap-3">
+          <article
+            class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#140A2E]/90 to-[#0D0620]/90 p-6 transition duration-300 hover:border-purple-400/45 hover:shadow-[0_18px_50px_rgba(124,58,237,0.22)]"
+          >
+            <div class="flex flex-col items-start gap-4">
               <div class="flex w-full items-center justify-between gap-2">
                 <span
-                  class="inline-flex h-10.5 w-10.5 items-center justify-center rounded-xl {style.iconClass}"
+                  class="inline-flex h-11 w-11 items-center justify-center rounded-xl border {style.iconClass}"
                 >
                   <Icon name={style.icon} size={20} />
                 </span>
-                <span class="text-2xl font-extrabold {style.titleClass}">{style.step}</span>
+                <span
+                  class="bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-3xl font-extrabold text-transparent"
+                >
+                  {style.step}
+                </span>
               </div>
-              <h3 class="text-lg font-bold {style.titleClass}">{copy?.title}</h3>
-              <p class="text-sm leading-relaxed {style.textClass}">{copy?.description}</p>
+              <h3 class="text-lg font-bold text-white">{copy?.title}</h3>
+              <p class="text-sm leading-relaxed text-purple-200/70">{copy?.description}</p>
             </div>
-          </Card>
+          </article>
         {/each}
       </div>
     </div>
   </section>
 
-  <!-- Section 5: Bottom CTA Banner & Free-Tier Google Ad Slot -->
-  <section id="benefits" class="bg-white py-16">
+  <!-- Section 5: Bottom Glowing CTA Banner & Free-Tier Google Ad Slot -->
+  <section id="benefits" class="bg-[#070312] py-18">
     <div class="c47-container">
       <div
-        class="rounded-2xl border border-[#E9D5FF] bg-gradient-to-r from-[#FAF5FF] via-white to-[#FDF4FF] p-6 shadow-[0_8px_28px_rgba(88,28,135,0.08)] sm:p-8"
+        class="relative overflow-hidden rounded-3xl border border-purple-400/30 bg-gradient-to-br from-[#1B0C3D] via-[#11072A] to-[#290B4E] p-7 shadow-[0_0_70px_rgba(139,92,246,0.22)] sm:p-10"
       >
-        <div class="flex flex-wrap items-center justify-between gap-6">
+        <div
+          class="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-fuchsia-500/25 blur-3xl"
+          aria-hidden="true"
+        ></div>
+        <div class="relative z-10 flex flex-wrap items-center justify-between gap-6">
           <div>
-            <h2 class="text-2xl font-extrabold tracking-tight text-[#2E1065]">
+            <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               {$t.home.ctaTitle}
             </h2>
-            <p class="mt-1.5 max-w-xl text-sm font-medium text-slate-600 sm:text-base">
+            <p class="mt-2 max-w-xl text-sm font-normal text-purple-200/75 sm:text-base">
               {$t.home.ctaSubtitle}
             </p>
           </div>
-          <div class="flex flex-wrap gap-3">
+          <div class="flex flex-wrap items-center gap-3.5">
             {#if $isAuthenticated && $currentUser}
               <a
                 href={continueHref}
-                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#9333EA] px-6 py-3 text-base font-bold text-white no-underline shadow-md transition hover:brightness-110 hover:no-underline"
+                class="inline-flex min-h-12 items-center gap-2.5 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-6 py-3 text-sm font-semibold text-white no-underline shadow-[0_0_28px_rgba(139,92,246,0.5)] transition hover:brightness-110 hover:no-underline sm:text-base"
               >
                 <Avatar name={$currentUser.name} src={$currentUser.avatarUrl} size="sm" />
                 <span>{$currentUser.name} — Continue</span>
@@ -436,15 +411,18 @@
             {:else}
               <a
                 href="/signup"
-                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#9333EA] px-6 py-3 text-base font-bold text-white no-underline shadow-md transition hover:brightness-110 hover:no-underline"
+                class="inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-3 text-sm font-semibold text-white no-underline shadow-[0_0_28px_rgba(139,92,246,0.55)] transition hover:brightness-110 hover:no-underline sm:text-base"
               >
-                <Icon name="user-plus" size={18} />
+                <Icon name="user-plus" size={17} />
                 <span>{$t.home.ctaSignUp}</span>
               </a>
-              <Button variant="outline" size="lg" href="/login" class="border-[#E9D5FF] text-[#7C3AED] hover:bg-[#FAF5FF] hover:text-[#A21CAF]">
-                <Icon name="log-in" size={18} />
+              <a
+                href="/login"
+                class="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-purple-100 no-underline transition hover:border-purple-300/60 hover:bg-white/10 hover:text-white hover:no-underline sm:text-base"
+              >
+                <Icon name="log-in" size={17} />
                 <span>{$t.home.ctaSignIn}</span>
-              </Button>
+              </a>
             {/if}
           </div>
         </div>
@@ -458,4 +436,4 @@
   </section>
 </main>
 
-<Footer />
+<Footer variant="dark" />

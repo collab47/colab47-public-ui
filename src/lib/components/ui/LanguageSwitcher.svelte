@@ -11,9 +11,10 @@
 
   interface Props {
     align?: 'left' | 'right';
+    tone?: 'light' | 'dark';
   }
 
-  let { align = 'right' }: Props = $props();
+  let { align = 'right', tone = 'light' }: Props = $props();
   let open = $state(false);
   let containerEl = $state<HTMLDivElement | null>(null);
 
@@ -49,7 +50,10 @@
 <div class="relative inline-block" bind:this={containerEl}>
   <button
     type="button"
-    class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-logo-green-border bg-logo-green-soft text-logo-green transition hover:border-logo-saffron hover:bg-logo-saffron-soft hover:text-logo-saffron"
+    class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border transition {tone ===
+    'dark'
+      ? 'border-white/15 bg-white/5 text-purple-100 hover:border-purple-400/60 hover:bg-white/12 hover:text-white'
+      : 'border-logo-green-border bg-logo-green-soft text-logo-green hover:border-logo-saffron hover:bg-logo-saffron-soft hover:text-logo-saffron'}"
     onclick={() => (open = !open)}
     aria-label="{$t.nav.switchLanguage} ({activeLanguage.nativeName})"
     aria-haspopup="menu"
