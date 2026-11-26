@@ -129,41 +129,86 @@
     },
   ];
 
-  const audienceMeta: ReadonlyArray<{
-    id: string;
+  const publicRoleCards: ReadonlyArray<{
+    roleCode: string;
+    name: string;
+    badge: string;
+    description: string;
     icon: IconName;
     iconClass: string;
     tagClass: string;
   }> = [
     {
-      id: 'students',
+      roleCode: 'student',
+      name: 'Student',
+      badge: 'Role 01',
+      description: 'UG/PG student building projects & verified proof of work.',
       icon: 'graduation-cap',
       iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
       tagClass: 'text-violet-300',
     },
     {
-      id: 'industry_startups',
-      icon: 'rocket',
+      roleCode: 'researcher',
+      name: 'Researcher',
+      badge: 'Role 02',
+      description: 'PhD scholar, fellow & open lab researcher publishing artifacts.',
+      icon: 'flask',
       iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
       tagClass: 'text-fuchsia-300',
     },
     {
-      id: 'researchers_faculty',
-      icon: 'flask',
+      roleCode: 'scientist',
+      name: 'Scientist',
+      badge: 'Role 03',
+      description: 'Applied scientist & R&D specialist leading deep-tech builds.',
+      icon: 'cpu',
       iconClass: 'bg-purple-500/15 text-purple-300 border-purple-400/25',
       tagClass: 'text-purple-300',
     },
     {
-      id: 'government_institutions',
+      roleCode: 'faculty',
+      name: 'Faculty',
+      badge: 'Role 04',
+      description: 'Professor, academic faculty & principal investigator attesting work.',
       icon: 'landmark',
+      iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
+      tagClass: 'text-violet-300',
+    },
+    {
+      roleCode: 'industry',
+      name: 'Industry',
+      badge: 'Role 05',
+      description: 'Industry R&D partner, engineer & technical recruiter solving challenges.',
+      icon: 'briefcase',
       iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
       tagClass: 'text-fuchsia-300',
     },
     {
-      id: 'professionals_mentors',
-      icon: 'award',
+      roleCode: 'startup',
+      name: 'Startup',
+      badge: 'Role 06',
+      description: 'Startup founder, deep-tech builder & innovation team hiring builders.',
+      icon: 'rocket',
+      iconClass: 'bg-purple-500/15 text-purple-300 border-purple-400/25',
+      tagClass: 'text-purple-300',
+    },
+    {
+      roleCode: 'government',
+      name: 'Government',
+      badge: 'Role 07',
+      description: 'Government agency, national lab & public mission steward for 2047.',
+      icon: 'building',
       iconClass: 'bg-violet-500/15 text-violet-300 border-violet-400/25',
       tagClass: 'text-violet-300',
+    },
+    {
+      roleCode: 'others',
+      name: 'Others',
+      badge: 'Role 08',
+      description: 'Independent innovator, mentor & ecosystem contributor.',
+      icon: 'sparkles',
+      iconClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/25',
+      tagClass: 'text-fuchsia-300',
     },
   ];
 
@@ -287,28 +332,33 @@
     </div>
   </section>
 
-  <!-- Section 3: Audience Section ("Who Is It For?") -->
+  <!-- Section 3: Public Roles Section ("Who Is It For?" — Synced with Signup Public Roles) -->
   <section id="who" class="relative border-b border-white/10 bg-[#070312] py-18">
     <div class="c47-container">
-      <div class="mb-10 flex max-w-2xl flex-col items-start gap-2.5">
-        <span
-          class="inline-flex items-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-fuchsia-200"
-        >
-          {$t.home.whoBadge}
+      <div class="mb-10 flex flex-wrap items-end justify-between gap-4">
+        <div class="flex max-w-2xl flex-col items-start gap-2.5">
+          <span
+            class="inline-flex items-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3.5 py-1 text-xs font-semibold tracking-wide text-fuchsia-200"
+          >
+            {$t.home.whoBadge} · {$t.auth.joiningAsHint}
+          </span>
+          <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {$t.home.whoTitle}
+          </h2>
+          <p class="text-sm font-normal text-purple-200/75 sm:text-base">
+            {$t.home.whoSubtitle}
+          </p>
+        </div>
+        <span class="text-xs font-semibold text-purple-200/80">
+          {$t.auth.joiningAsLabel} → Click any role to sign up
         </span>
-        <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {$t.home.whoTitle}
-        </h2>
-        <p class="text-sm font-normal text-purple-200/70 sm:text-base">
-          {$t.home.whoSubtitle}
-        </p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {#each audienceMeta as style, idx (style.id)}
-          {@const copy = $t.home.audiences[idx]}
-          <article
-            class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#100726]/80 p-5 transition duration-300 hover:border-fuchsia-400/45 hover:bg-[#160A33] hover:shadow-[0_14px_40px_rgba(147,51,234,0.2)]"
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {#each publicRoleCards as role (role.roleCode)}
+          <a
+            href="/signup?role={role.roleCode}"
+            class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#100726]/85 p-5 no-underline transition duration-300 hover:border-fuchsia-400/50 hover:bg-[#170B36] hover:shadow-[0_14px_40px_rgba(147,51,234,0.24)] hover:no-underline"
           >
             <div
               class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-violet-500/0 via-purple-400/70 to-fuchsia-400/0 opacity-0 transition group-hover:opacity-100"
@@ -317,18 +367,18 @@
             <div class="flex flex-col items-start gap-3.5">
               <div class="flex w-full items-center justify-between gap-2">
                 <span
-                  class="inline-flex h-11 w-11 items-center justify-center rounded-xl border {style.iconClass}"
+                  class="inline-flex h-11 w-11 items-center justify-center rounded-xl border {role.iconClass}"
                 >
-                  <Icon name={style.icon} size={20} />
+                  <Icon name={role.icon} size={20} />
                 </span>
-                <span class="text-[11px] font-bold tracking-wider uppercase {style.tagClass}">
-                  {copy?.badge}
+                <span class="text-[11px] font-bold tracking-wider uppercase {role.tagClass}">
+                  {role.badge}
                 </span>
               </div>
-              <h3 class="text-base font-bold text-white">{copy?.title}</h3>
-              <p class="text-sm leading-relaxed text-purple-200/70">{copy?.description}</p>
+              <h3 class="text-base font-bold text-white">{role.name}</h3>
+              <p class="text-sm leading-relaxed text-purple-100/75">{role.description}</p>
             </div>
-          </article>
+          </a>
         {/each}
       </div>
     </div>

@@ -40,18 +40,22 @@
   });
 
   onMount(async () => {
-    const hasSession = await ensureFreshSession();
-    const user = authState.get().user;
-    if (hasSession && user) {
-      const explicitNext = $page.url.searchParams.get('next');
-      const targetPath =
-        explicitNext &&
-        explicitNext.startsWith('/') &&
-        !explicitNext.startsWith('//') &&
-        explicitNext !== '/login'
-          ? explicitNext
-          : getDashboardPath(user.accountType);
-      await goto(targetPath, { replaceState: true });
+    try {
+      const hasSession = await ensureFreshSession();
+      const user = authState.get().user;
+      if (hasSession && user) {
+        const explicitNext = $page.url.searchParams.get('next');
+        const targetPath =
+          explicitNext &&
+          explicitNext.startsWith('/') &&
+          !explicitNext.startsWith('//') &&
+          explicitNext !== '/login'
+            ? explicitNext
+            : getDashboardPath(user.accountType);
+        await goto(targetPath, { replaceState: true });
+      }
+    } catch {
+      // Stay on login page if background session check fails
     }
   });
 

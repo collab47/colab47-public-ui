@@ -19,6 +19,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { t } from '$lib/stores';
   import Avatar from './Avatar.svelte';
   import Icon, { type IconName } from './Icon.svelte';
 
@@ -32,15 +33,15 @@
   export let signInLabel = 'Sign In';
   export let dpdpNote = '';
 
-  const ecosystemStrip: ReadonlyArray<{ label: string; icon: IconName }> = [
-    { label: 'Students', icon: 'graduation-cap' },
-    { label: 'Researchers', icon: 'flask' },
-    { label: 'Scientists', icon: 'cpu' },
-    { label: 'Faculty', icon: 'award' },
-    { label: 'Industry', icon: 'layers' },
-    { label: 'Startups', icon: 'rocket' },
-    { label: 'Government', icon: 'landmark' },
-    { label: 'Mentors', icon: 'shield-check' },
+  const ecosystemStrip: ReadonlyArray<{ roleCode: string; label: string; icon: IconName }> = [
+    { roleCode: 'student', label: 'Student', icon: 'graduation-cap' },
+    { roleCode: 'researcher', label: 'Researcher', icon: 'flask' },
+    { roleCode: 'scientist', label: 'Scientist', icon: 'cpu' },
+    { roleCode: 'faculty', label: 'Faculty', icon: 'landmark' },
+    { roleCode: 'industry', label: 'Industry', icon: 'briefcase' },
+    { roleCode: 'startup', label: 'Startup', icon: 'rocket' },
+    { roleCode: 'government', label: 'Government', icon: 'building' },
+    { roleCode: 'others', label: 'Others', icon: 'sparkles' },
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -330,21 +331,32 @@
     {/if}
   </div>
 
-  <!-- Bottom Muted Ecosystem Trust Bar (directly matching new-dashboard.jpeg footer strip) -->
-  <div class="relative z-10 border-t border-white/10 bg-[#0A051A]/85 backdrop-blur-md">
+  <!-- Bottom Ecosystem Role Bar (8 Canonical Public Roles + Crisp High-Contrast Text) -->
+  <div class="relative z-10 border-t border-purple-400/20 bg-[#0D0622]/95 backdrop-blur-md">
     <div class="c47-container py-5">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs font-bold tracking-wider uppercase text-fuchsia-300">
+          {$t.auth.joiningAsLabel}
+        </span>
+        <span class="text-xs font-medium text-purple-200/90">
+          {$t.auth.joiningAsHint}
+        </span>
+      </div>
       <div
-        class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs font-semibold tracking-wide text-purple-200/50"
+        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 text-xs font-semibold tracking-wide"
       >
-        {#each ecosystemStrip as item (item.label)}
-          <span class="inline-flex items-center gap-2 transition hover:text-purple-100/90">
-            <Icon name={item.icon} size={15} class="text-purple-400/70" />
+        {#each ecosystemStrip as item (item.roleCode)}
+          <a
+            href="/signup?role={item.roleCode}"
+            class="inline-flex items-center gap-2 rounded-full border border-purple-400/25 bg-purple-500/10 px-3 py-1.5 text-white no-underline transition hover:border-fuchsia-400/70 hover:bg-purple-500/25 hover:text-fuchsia-100 hover:no-underline"
+          >
+            <Icon name={item.icon} size={15} class="text-fuchsia-300" />
             <span>{item.label}</span>
-          </span>
+          </a>
         {/each}
       </div>
       {#if dpdpNote}
-        <p id="dpdp" class="mt-3 text-center text-[11px] font-medium text-purple-200/45 lg:text-left">
+        <p id="dpdp" class="mt-3.5 text-center text-xs font-medium text-purple-100/90 lg:text-left">
           {dpdpNote}
         </p>
       {/if}
