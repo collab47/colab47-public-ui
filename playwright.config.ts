@@ -16,6 +16,9 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['./tests/e2e/helpers/collab47-reporter.ts'],
   ],
   use: {
     baseURL,
@@ -24,8 +27,12 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    trace: 'on',
+    screenshot: 'on',
+    video: {
+      mode: 'on',
+      size: { width: 1280, height: 720 },
+    },
     launchOptions: {
       slowMo,
     },

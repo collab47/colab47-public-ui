@@ -19,11 +19,21 @@
   let installing = $state(false);
   let mounted = $state(false);
 
-  const isLandingPage = $derived($page.url.pathname === '/');
+  const isInstallPromptHiddenRoute = $derived.by(() => {
+    const path = $page.url.pathname;
+    return (
+      path === '/' ||
+      path.startsWith('/projects/') ||
+      path.startsWith('/profile') ||
+      path.startsWith('/onboarding') ||
+      path.startsWith('/login') ||
+      path.startsWith('/signup')
+    );
+  });
 
   const shouldRenderInstall = $derived(
     mounted &&
-      !isLandingPage &&
+      !isInstallPromptHiddenRoute &&
       !$pwaState.isStandalone &&
       !$pwaState.isInstalled &&
       !$pwaState.isDismissed,
