@@ -106,10 +106,9 @@
         }
         if (
           session.isNewUser &&
-          $page.url.pathname !== '/signup/plan' &&
           $page.url.pathname !== '/onboarding'
         ) {
-          void goto('/signup/plan');
+          void goto('/onboarding');
         }
       }
     }

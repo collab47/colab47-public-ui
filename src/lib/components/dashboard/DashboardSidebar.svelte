@@ -27,7 +27,6 @@
     $t.dashboard.roles[resolveDashboardTranslationKey(userAccountRole)],
   );
   const userDashboardHref = $derived(getDashboardPath(userAccountRole));
-  const membershipTier = $derived<'free' | 'premium'>($authState.user?.membershipTier ?? 'free');
   const completeness = $derived($profileState.profile?.completenessPercent ?? 30);
   const pathname = $derived($page.url.pathname);
   const isOnMyDashboard = $derived(
@@ -86,11 +85,11 @@
         ]
       : []),
     { href: '/onboarding', label: $t.sidebar.onboardingSkills, icon: 'sparkles' },
+    { href: '/profile?tab=badges', label: 'Badges & Achievements', icon: 'award' },
     {
       href: '/membership',
       label: $t.sidebar.membershipPlans,
-      icon: 'award',
-      pill: membershipTier === 'premium' ? 'PRO' : 'FREE',
+      icon: 'shield-check',
     },
   ]);
 

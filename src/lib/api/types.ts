@@ -121,6 +121,7 @@ export type IndianPaymentMethod =
   | 'netbanking'
   | 'bank_transfer';
 export type PaymentStatus = 'created' | 'authorized' | 'captured' | 'failed' | 'refunded';
+export type PaymentPurpose = 'project_post' | 'membership';
 
 export interface ValidationFieldError {
   field: string;
@@ -189,7 +190,7 @@ export interface RegisterRequest {
   mobileNumber: string;
   password: string;
   confirmPassword: string;
-  accountType: AccountType;
+  accountType?: AccountType;
   inviteToken?: string;
 }
 

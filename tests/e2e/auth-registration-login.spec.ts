@@ -6,7 +6,7 @@ const nodeEnv = (globalThis as { process?: { env?: Record<string, string | undef
   ?.env;
 const USE_LIVE_API = nodeEnv?.E2E_USE_LIVE_API === 'true';
 
-const CANONICAL_PUBLIC_ROLES = [
+const REMOVED_SIGNUP_ROLES = [
   'Student',
   'Researcher',
   'Scientist',
@@ -32,8 +32,8 @@ async function clearBrowserSession(page: Page): Promise<void> {
   });
 }
 
-test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Error Detection)', () => {
-  test('1. Home page navigates cleanly to /signup and /login with all 8 public roles and zero errors', async ({
+test.describe('Collab47 Auth E2E — Registration & Login (No Plan Selection / No Role Selection)', () => {
+  test('1. Home page navigates cleanly to /signup and /login with Google AdSense slot and zero errors', async ({
     page,
   }) => {
     await setupApiIfMocked(page);
@@ -42,9 +42,18 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     const homeResponse = await page.goto('/', { waitUntil: 'networkidle' });
     expect(homeResponse?.status(), 'Home page should return HTTP 200').toBe(200);
 
-    for (const role of CANONICAL_PUBLIC_ROLES) {
-      await expect(page.getByRole('link', { name: role }).first()).toBeVisible();
-    }
+    // Global AdSense script in <head> and AdUnit <ins class="adsbygoogle"> mounted on home page
+    await expect(
+      page.locator('script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'),
+    ).toHaveCount(1);
+    await expect(page.locator('ins.adsbygoogle').first()).toBeAttached();
+
+    // HeroCarousel smooth native controls work without remounting or console errors
+    const slide2Dot = page.getByRole('button', { name: 'Go to slide 2' });
+    await expect(slide2Dot).toBeVisible();
+    await slide2Dot.click();
+    await expect(slide2Dot).toHaveAttribute('aria-current', 'true');
+    await expect(page.getByText('02 / 03')).toBeVisible();
 
     await page.locator('a[href="/signup"]').first().click();
     await expect(page).toHaveURL(/\/signup$/);
@@ -57,7 +66,7 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     monitor.assertClean();
   });
 
-  test('2. Registration page detects all client-side validation errors without runtime crashes', async ({
+  test('2. Registration page removes role selection & plan step and detects all client-side validation errors', async ({
     page,
   }) => {
     await setupApiIfMocked(page);
@@ -66,9 +75,12 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     const response = await page.goto('/signup', { waitUntil: 'networkidle' });
     expect(response?.status(), '/signup should return HTTP 200').toBe(200);
 
-    for (const role of CANONICAL_PUBLIC_ROLES) {
-      await expect(page.getByRole('button', { name: role })).toBeVisible();
+    // Ensure role selection buttons ("register as student etc.") are NOT rendered on /signup
+    for (const role of REMOVED_SIGNUP_ROLES) {
+      await expect(page.getByRole('button', { name: role, exact: true })).toHaveCount(0);
     }
+    await expect(page.getByText('I am joining as')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Create Account/i })).toBeVisible();
 
     // Empty form submission
     await page.locator('form button[type="submit"]').click();
@@ -109,7 +121,7 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     monitor.assertClean();
   });
 
-  test('3. Login page detects validation errors, 401 invalid credentials, and graceful 500 error recovery', async ({
+  test('3. Login page has no role selection, detects validation errors, 401 invalid credentials, and 500 recovery', async ({
     page,
   }) => {
     const mockApi = await setupApiIfMocked(page);
@@ -117,6 +129,10 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
 
     const response = await page.goto('/login', { waitUntil: 'networkidle' });
     expect(response?.status(), '/login should return HTTP 200').toBe(200);
+
+    for (const role of REMOVED_SIGNUP_ROLES) {
+      await expect(page.getByRole('button', { name: role, exact: true })).toHaveCount(0);
+    }
 
     // Empty login form validation
     await page.locator('form button[type="submit"]').click();
@@ -151,7 +167,7 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
       ],
     });
 
-    // Simulated backend 500 error (mocked mode only) — verify UI shows alert & error detector catches 500
+    // Simulated backend 500 error (mocked mode only)
     if (mockApi) {
       monitor.reset();
       mockApi.failNext(/^\/auth\/login$/, 500, {
@@ -206,7 +222,7 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     monitor.assertClean();
   });
 
-  test('5. Full Registration -> Duplicate Email Error -> Wrong Password Error -> Valid Login -> Dashboard', async ({
+  test('5. Full Registration (Direct to /onboarding, No Plan Step) -> /signup/plan Redirect -> Duplicate 409 -> Login', async ({
     page,
   }) => {
     await setupApiIfMocked(page);
@@ -218,17 +234,10 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
       email: `meera.iyer.${uniqueSuffix}@collab47.test`,
       mobile: `98${uniqueSuffix.slice(-8)}`,
       password: 'Collab47@E2E!2026',
-      role: 'Researcher' as const,
     };
 
-    // Step 1: Register brand-new Researcher
+    // Step 1: Register brand-new user (no role selection, goes directly to /onboarding)
     await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: newUser.role }).click();
-    await expect(page.getByRole('button', { name: newUser.role })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-
     await page.locator('#register-name').fill(newUser.name);
     await page.locator('#register-email').fill(newUser.email);
     await page.locator('#register-mobile-number').fill(newUser.mobile);
@@ -242,8 +251,12 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
 
     expect(registerRes.status()).toBeGreaterThanOrEqual(200);
     expect(registerRes.status()).toBeLessThan(300);
-    await expect(page).toHaveURL(/\/signup\/plan/, { timeout: 15_000 });
-    await expect(page.getByText('Free Membership').first()).toBeVisible();
+    await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
+    await expect(page.getByText('Free Membership')).toHaveCount(0);
+
+    // Step 1b: Legacy /signup/plan URL redirects directly to /onboarding
+    await page.goto('/signup/plan', { waitUntil: 'networkidle' });
+    await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
     monitor.assertClean();
 
     // Step 2: Clear session & verify duplicate registration returns 409 error cleanly
@@ -298,7 +311,7 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
       ],
     });
 
-    // Step 4: Log in with correct password & confirm Researcher dashboard loads cleanly
+    // Step 4: Log in with correct password & confirm dashboard loads cleanly
     monitor.reset();
     await page.locator('#login-password').fill(newUser.password);
 
@@ -308,9 +321,9 @@ test.describe('Collab47 Auth E2E — Registration & Login (Mocked Test Data + Er
     ]);
 
     expect(validLoginRes.status()).toBe(200);
-    await expect(page).toHaveURL(/\/dashboard\/researcher/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/dashboard\/student/, { timeout: 15_000 });
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
 
     monitor.assertClean();
   });

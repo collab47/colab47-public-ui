@@ -17,21 +17,33 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { t } from '$lib/stores';
   import Avatar from './Avatar.svelte';
   import Icon, { type IconName } from './Icon.svelte';
 
-  export let slides: readonly HeroCarouselSlide[] = [];
-  export let autoplayDuration = 6000;
-  export let isAuthenticated = false;
-  export let userName = '';
-  export let userAvatarUrl: string | null | undefined = undefined;
-  export let continueHref = '/dashboard';
-  export let signUpLabel = 'Sign Up';
-  export let signInLabel = 'Sign In';
-  export let dpdpNote = '';
+  interface Props {
+    slides?: readonly HeroCarouselSlide[];
+    autoplayDuration?: number;
+    isAuthenticated?: boolean;
+    userName?: string;
+    userAvatarUrl?: string | null | undefined;
+    continueHref?: string;
+    signUpLabel?: string;
+    signInLabel?: string;
+    dpdpNote?: string;
+  }
+
+  let {
+    slides = [],
+    autoplayDuration = 6000,
+    isAuthenticated = false,
+    userName = '',
+    userAvatarUrl = undefined,
+    continueHref = '/dashboard',
+    signUpLabel = 'Sign Up',
+    signInLabel = 'Sign In',
+    dpdpNote = '',
+  }: Props = $props();
 
   const ecosystemStrip: ReadonlyArray<{ roleCode: string; label: string; icon: IconName }> = [
     { roleCode: 'student', label: 'Student', icon: 'graduation-cap' },
@@ -44,153 +56,104 @@
     { roleCode: 'others', label: 'Others', icon: 'sparkles' },
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let CarouselComponent: any = null;
+  let activeIndex = $state(0);
+  let isPaused = $state(false);
+  let pointerStartX = $state<number | null>(null);
+  let pointerStartY = $state<number | null>(null);
+  let timerResetTick = $state(0);
 
-  onMount(async () => {
-    if (!browser) return;
-    try {
-      const mod = await import('svelte-carousel');
-      CarouselComponent = mod.default;
-    } catch (err) {
-      console.warn('[Collab47] Failed to load svelte-carousel:', err);
+  const slideCount = $derived(slides.length);
+
+  $effect(() => {
+    if (slideCount > 0 && activeIndex >= slideCount) {
+      activeIndex = 0;
     }
   });
+
+  $effect(() => {
+    // Re-register interval cleanly when autoplayDuration, pause state, slide count, or manual nav changes.
+    void timerResetTick;
+    if (!browser || slideCount <= 1 || isPaused || autoplayDuration <= 0) return;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        activeIndex = (activeIndex + 1) % slideCount;
+      }
+    }, autoplayDuration);
+
+    return () => window.clearInterval(id);
+  });
+
+  function goToSlide(index: number): void {
+    if (slideCount <= 0) return;
+    activeIndex = ((index % slideCount) + slideCount) % slideCount;
+    timerResetTick += 1;
+  }
+
+  function showPrevSlide(): void {
+    goToSlide(activeIndex - 1);
+  }
+
+  function showNextSlide(): void {
+    goToSlide(activeIndex + 1);
+  }
+
+  function handlePointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    pointerStartX = event.clientX;
+    pointerStartY = event.clientY;
+  }
+
+  function handlePointerUp(event: PointerEvent): void {
+    if (pointerStartX === null || pointerStartY === null) return;
+    const dx = event.clientX - pointerStartX;
+    const dy = event.clientY - pointerStartY;
+    pointerStartX = null;
+    pointerStartY = null;
+
+    if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (dx < 0) showNextSlide();
+      else showPrevSlide();
+    }
+  }
+
+  function handlePointerCancel(): void {
+    pointerStartX = null;
+    pointerStartY = null;
+  }
+
+  function handleKeydown(event: KeyboardEvent): void {
+    if (slideCount <= 1) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      showPrevSlide();
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      showNextSlide();
+    }
+  }
+
+  function handleFocusOut(event: FocusEvent): void {
+    const current = event.currentTarget as HTMLElement | null;
+    const next = event.relatedTarget as Node | null;
+    if (!current || !next || !current.contains(next)) {
+      isPaused = false;
+    }
+  }
 </script>
-
-{#snippet slideContent(slide: HeroCarouselSlide, idx: number)}
-  <div class="w-full py-12 sm:py-16 lg:py-20">
-    <div
-      class="c47-container grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12"
-    >
-      <!-- Left Column: Display Headline, Existing Slogans, Glowing Pill CTA, & Hairline Stats -->
-      <div class="flex flex-col items-start text-left lg:col-span-7">
-        <span
-          class="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-400/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-purple-200 backdrop-blur-sm"
-        >
-          <span class="relative flex h-2 w-2" aria-hidden="true">
-            <span
-              class="hero-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400"
-            ></span>
-            <span class="relative inline-flex h-2 w-2 rounded-full bg-fuchsia-300"></span>
-          </span>
-          <span>{slide.badge}</span>
-        </span>
-
-        <svelte:element
-          this={idx === 0 ? 'h1' : 'h2'}
-          class="text-4xl leading-[1.08] font-semibold tracking-tight text-white sm:text-5xl lg:text-[62px]"
-        >
-          <span class="block">{slide.titlePrimary}</span>
-          <span class="hero-headline-shine block">{slide.titleSecondary}</span>
-        </svelte:element>
-
-        <p class="mt-5 max-w-xl text-base leading-relaxed font-medium text-purple-100/90 sm:text-lg">
-          {slide.subtitle}
-        </p>
-        <p class="mt-2.5 max-w-xl text-sm leading-relaxed text-purple-200/70 sm:text-base">
-          {slide.description}
-        </p>
-
-        <!-- Primary Glowing Purple Pill CTA + Inline Secondary Link -->
-        <div class="mt-7 flex flex-wrap items-center gap-5">
-          {#if isAuthenticated && userName}
-            <a
-              href={continueHref}
-              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
-            >
-              <Avatar name={userName} src={userAvatarUrl} size="sm" />
-              <span>{userName} — Continue</span>
-              <Icon name="arrow-right" size={17} />
-            </a>
-          {:else}
-            <a
-              href="/signup"
-              class="hero-btn-shine relative inline-flex min-h-12 items-center gap-2.5 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
-            >
-              <span>{signUpLabel} — It's Free</span>
-              <Icon name="arrow-right" size={16} />
-            </a>
-            <a
-              href="/login"
-              class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-purple-100/90 no-underline transition hover:text-white hover:no-underline sm:text-base"
-            >
-              <span>{signInLabel}</span>
-            </a>
-          {/if}
-        </div>
-
-        <!-- Bottom Hairline-Divided Stats Row (matching new-dashboard.jpeg) -->
-        <div class="mt-10 flex flex-wrap items-center gap-6 sm:gap-8">
-          {#each slide.stats as stat, i}
-            <div class={i > 0 ? 'border-l border-white/15 pl-6 sm:pl-8' : ''}>
-              <strong
-                class="block text-2xl leading-none font-semibold tracking-tight tabular-nums text-white sm:text-3xl"
-              >
-                {stat.value}
-              </strong>
-              <span class="mt-1.5 block text-xs font-medium text-purple-200/65">
-                {stat.label}
-              </span>
-            </div>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Right Column: Rounded Neon-Lit Showcase Visual Card (matching new-dashboard.jpeg) -->
-      <div class="lg:col-span-5">
-        <div
-          class="group relative mx-auto aspect-[4/3] w-full max-w-[480px] overflow-hidden rounded-[24px] border border-purple-400/30 bg-[#12072B] shadow-[0_24px_80px_rgba(124,58,237,0.38)]"
-        >
-          <img
-            src="/images/carasoul-bg.png"
-            alt="Collab47 Innovation Workspace"
-            width="1600"
-            height="800"
-            fetchpriority={idx === 0 ? 'high' : 'low'}
-            loading={idx === 0 ? 'eager' : 'lazy'}
-            decoding="async"
-            class="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 select-none"
-          />
-          <div
-            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#090418]/85 via-transparent to-purple-900/15"
-          ></div>
-
-          <!-- Top-Left Live Status Chip inside Showcase Frame -->
-          <div class="absolute top-4 left-4 right-4 flex items-center justify-between gap-2">
-            <span
-              class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-[#0A041C]/70 px-3 py-1 text-[11px] font-semibold text-purple-100 backdrop-blur-md"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400"></span>
-              <span>Viksit Bharat 2047</span>
-            </span>
-            <span
-              class="rounded-full border border-purple-300/25 bg-[#0A041C]/70 px-2.5 py-1 text-[11px] font-semibold text-purple-200 backdrop-blur-md"
-            >
-              0{idx + 1} / 0{slides.length}
-            </span>
-          </div>
-
-          <!-- Bottom Glass Caption Strip inside Showcase Frame -->
-          <div
-            class="absolute right-4 bottom-4 left-4 rounded-2xl border border-white/15 bg-[#0B051E]/75 px-4 py-3 backdrop-blur-md"
-          >
-            <p class="text-xs leading-relaxed font-medium text-purple-100/95">
-              {slide.ctaPrompt}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-{/snippet}
 
 <section
   class="hero-shell relative w-full overflow-hidden bg-[#070312] text-white"
   aria-label="Collab47 hero section"
+  aria-roledescription="carousel"
 >
-  <!-- Flowing Neon Purple & Magenta Silk-Wave Ribbons (matching new-dashboard.jpeg) -->
-  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+  <!-- Flowing Neon Purple & Magenta Silk-Wave Ribbons (isolated GPU layer so slides never cause repaint flicker) -->
+  <div class="hero-backdrop pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
     <div class="hero-orb hero-orb-top"></div>
     <div class="hero-orb hero-orb-right"></div>
     <div class="hero-orb hero-orb-bottom"></div>
@@ -247,87 +210,214 @@
     </svg>
   </div>
 
-  <!-- Hero Carousel Slides -->
-  <div class="hero-sc-root relative z-10 w-full pb-8">
-    {#if browser && CarouselComponent}
-      <svelte:component
-        this={CarouselComponent}
-        autoplay={true}
-        {autoplayDuration}
-        pauseOnFocus={true}
-        infinite={true}
-        swiping={true}
-        arrows={true}
-        dots={true}
-        duration={650}
-        timingFunction="ease-in-out"
-      >
-        <div
-          slot="prev"
-          let:showPrevPage
-          class="absolute top-1/2 left-2 z-20 hidden -translate-y-1/2 xl:block xl:left-4"
+  <!-- Hero Carousel Slides (zero SSR-to-client remount, GPU-composited crossfade, persistent showcase visual) -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    class="relative z-10 w-full pb-8"
+    role="region"
+    aria-label="Featured Collab47 highlights"
+    onmouseenter={() => (isPaused = true)}
+    onmouseleave={() => (isPaused = false)}
+    onfocusin={() => (isPaused = true)}
+    onfocusout={handleFocusOut}
+    onpointerdown={handlePointerDown}
+    onpointerup={handlePointerUp}
+    onpointercancel={handlePointerCancel}
+    onkeydown={handleKeydown}
+  >
+    {#if slideCount > 1}
+      <div class="absolute top-1/2 left-2 z-20 hidden -translate-y-1/2 xl:left-4 xl:block">
+        <button
+          type="button"
+          onclick={showPrevSlide}
+          aria-label="Previous slide"
+          class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
         >
-          <button
-            type="button"
-            on:click={showPrevPage}
-            aria-label="Previous slide"
-            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
-          >
-            <Icon name="chevron-left" size={18} />
-          </button>
+          <Icon name="chevron-left" size={18} />
+        </button>
+      </div>
+
+      <div class="absolute top-1/2 right-2 z-20 hidden -translate-y-1/2 xl:right-4 xl:block">
+        <button
+          type="button"
+          onclick={showNextSlide}
+          aria-label="Next slide"
+          class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
+        >
+          <Icon name="chevron-right" size={18} />
+        </button>
+      </div>
+    {/if}
+
+    {#if slideCount > 0}
+      <div class="w-full py-12 sm:py-16 lg:py-20">
+        <div
+          class="c47-container grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12"
+        >
+          <!-- Left Column: Stacked Crossfading Slides (same CSS Grid cell = zero layout shift, zero flicker) -->
+          <div class="hero-slide-stack lg:col-span-7">
+            {#each slides as slide, idx (slide.id)}
+              {@const isActive = idx === activeIndex}
+              <div
+                class="hero-slide-item flex flex-col items-start text-left"
+                class:hero-slide-active={isActive}
+                aria-hidden={!isActive}
+                inert={!isActive}
+              >
+                <span
+                  class="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-400/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-purple-200"
+                >
+                  <span class="relative flex h-2 w-2" aria-hidden="true">
+                    <span
+                      class="hero-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400"
+                    ></span>
+                    <span class="relative inline-flex h-2 w-2 rounded-full bg-fuchsia-300"></span>
+                  </span>
+                  <span>{slide.badge}</span>
+                </span>
+
+                <svelte:element
+                  this={idx === 0 ? 'h1' : 'h2'}
+                  class="text-4xl leading-[1.08] font-semibold tracking-tight text-white sm:text-5xl lg:text-[62px]"
+                >
+                  <span class="block">{slide.titlePrimary}</span>
+                  <span class="hero-headline-shine block">{slide.titleSecondary}</span>
+                </svelte:element>
+
+                <p
+                  class="mt-5 max-w-xl text-base leading-relaxed font-medium text-purple-100/90 sm:text-lg"
+                >
+                  {slide.subtitle}
+                </p>
+                <p class="mt-2.5 max-w-xl text-sm leading-relaxed text-purple-200/70 sm:text-base">
+                  {slide.description}
+                </p>
+
+                <!-- Primary Glowing Purple Pill CTA + Inline Secondary Link -->
+                <div class="mt-7 flex flex-wrap items-center gap-5">
+                  {#if isAuthenticated && userName}
+                    <a
+                      href={continueHref}
+                      tabindex={isActive ? 0 : -1}
+                      class="hero-btn-shine relative inline-flex min-h-12 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
+                    >
+                      <Avatar name={userName} src={userAvatarUrl} size="sm" />
+                      <span>{userName} — Continue</span>
+                      <Icon name="arrow-right" size={17} />
+                    </a>
+                  {:else}
+                    <a
+                      href="/signup"
+                      tabindex={isActive ? 0 : -1}
+                      class="hero-btn-shine relative inline-flex min-h-12 items-center gap-2.5 overflow-hidden rounded-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A855F7] px-7 py-2.5 text-sm font-semibold text-white no-underline shadow-[0_0_32px_rgba(139,92,246,0.55)] transition hover:scale-[1.02] hover:brightness-110 hover:no-underline sm:text-base"
+                    >
+                      <span>{signUpLabel} — It's Free</span>
+                      <Icon name="arrow-right" size={16} />
+                    </a>
+                    <a
+                      href="/login"
+                      tabindex={isActive ? 0 : -1}
+                      class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-purple-100/90 no-underline transition hover:text-white hover:no-underline sm:text-base"
+                    >
+                      <span>{signInLabel}</span>
+                    </a>
+                  {/if}
+                </div>
+
+                <!-- Bottom Hairline-Divided Stats Row -->
+                <div class="mt-10 flex flex-wrap items-center gap-6 sm:gap-8">
+                  {#each slide.stats as stat, i}
+                    <div class={i > 0 ? 'border-l border-white/15 pl-6 sm:pl-8' : ''}>
+                      <strong
+                        class="block text-2xl leading-none font-semibold tracking-tight tabular-nums text-white sm:text-3xl"
+                      >
+                        {stat.value}
+                      </strong>
+                      <span class="mt-1.5 block text-xs font-medium text-purple-200/65">
+                        {stat.label}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <!-- Right Column: Persistent Rounded Neon-Lit Showcase Visual Card (never reloads or flashes across slides) -->
+          <div class="lg:col-span-5">
+            <div
+              class="group relative mx-auto aspect-[4/3] w-full max-w-[480px] overflow-hidden rounded-[24px] border border-purple-400/30 bg-[#12072B] shadow-[0_24px_80px_rgba(124,58,237,0.38)]"
+            >
+              <picture>
+                <source srcset="/images/carasoul-bg.webp" type="image/webp" />
+                <img
+                  src="/images/carasoul-bg.png"
+                  alt="Collab47 Innovation Workspace"
+                  width="1600"
+                  height="800"
+                  fetchpriority="high"
+                  loading="eager"
+                  decoding="sync"
+                  class="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 select-none"
+                />
+              </picture>
+              <div
+                class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#090418]/85 via-transparent to-purple-900/15"
+              ></div>
+
+              <!-- Top-Left Live Status Chip + Smooth Slide Counter inside Showcase Frame -->
+              <div class="absolute top-4 right-4 left-4 flex items-center justify-between gap-2">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-[#0A041C]/75 px-3 py-1 text-[11px] font-semibold text-purple-100 backdrop-blur-md"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-400"></span>
+                  <span>Viksit Bharat 2047</span>
+                </span>
+                <span
+                  class="rounded-full border border-purple-300/25 bg-[#0A041C]/75 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-purple-200 backdrop-blur-md"
+                >
+                  0{activeIndex + 1} / 0{slideCount}
+                </span>
+              </div>
+
+              <!-- Bottom Glass Caption Strip with Smooth Stacked Crossfade -->
+              <div
+                class="absolute right-4 bottom-4 left-4 rounded-2xl border border-white/15 bg-[#0B051E]/80 px-4 py-3 backdrop-blur-md"
+              >
+                <div class="hero-caption-stack">
+                  {#each slides as slide, idx (slide.id)}
+                    <p
+                      class="hero-caption-item text-xs leading-relaxed font-medium text-purple-100/95"
+                      class:hero-caption-active={idx === activeIndex}
+                      aria-hidden={idx !== activeIndex}
+                    >
+                      {slide.ctaPrompt}
+                    </p>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {#each slides as slide, idx (slide.id)}
-          {@render slideContent(slide, idx)}
-        {/each}
-
-        <div
-          slot="next"
-          let:showNextPage
-          class="absolute top-1/2 right-2 z-20 hidden -translate-y-1/2 xl:block xl:right-4"
-        >
-          <button
-            type="button"
-            on:click={showNextPage}
-            aria-label="Next slide"
-            class="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-[#12082A]/70 text-purple-100 backdrop-blur-md transition hover:border-purple-400/60 hover:bg-[#7C3AED] hover:text-white"
-          >
-            <Icon name="chevron-right" size={18} />
-          </button>
-        </div>
-
-        <div
-          slot="dots"
-          let:currentPageIndex
-          let:pagesCount
-          let:showPage
-          class="mt-1 flex items-center justify-center gap-2.5"
-        >
-          {#each Array(pagesCount || slides.length) as _, pageIndex (pageIndex)}
+      <!-- Pagination Dots -->
+      {#if slideCount > 1}
+        <div class="mt-1 flex items-center justify-center gap-2.5">
+          {#each slides as slide, pageIndex (slide.id)}
             <button
               type="button"
-              on:click={() => showPage(pageIndex)}
+              onclick={() => goToSlide(pageIndex)}
               aria-label="Go to slide {pageIndex + 1}"
-              aria-current={currentPageIndex === pageIndex ? 'true' : undefined}
-              class="h-2 cursor-pointer rounded-full transition-all duration-300 {currentPageIndex ===
+              aria-current={activeIndex === pageIndex ? 'true' : undefined}
+              class="h-2 cursor-pointer rounded-full transition-all duration-300 {activeIndex ===
               pageIndex
                 ? 'w-8 bg-gradient-to-r from-[#A855F7] to-[#E879F9] shadow-[0_0_12px_rgba(192,132,252,0.85)]'
                 : 'w-2 bg-white/25 hover:bg-white/60'}"
             ></button>
           {/each}
         </div>
-      </svelte:component>
-    {:else if slides[0]}
-      {@render slideContent(slides[0], 0)}
-      <div class="mt-1 flex items-center justify-center gap-2.5" aria-hidden="true">
-        {#each slides as slide, idx (slide.id)}
-          <span
-            class="h-2 rounded-full {idx === 0
-              ? 'w-8 bg-gradient-to-r from-[#A855F7] to-[#E879F9]'
-              : 'w-2 bg-white/25'}"
-          ></span>
-        {/each}
-      </div>
+      {/if}
     {/if}
   </div>
 
@@ -336,10 +426,10 @@
     <div class="c47-container py-5">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span class="text-xs font-bold tracking-wider uppercase text-fuchsia-300">
-          {$t.auth.joiningAsLabel}
+          Built for India's Innovation Ecosystem
         </span>
         <span class="text-xs font-medium text-purple-200/90">
-          {$t.auth.joiningAsHint}
+          First 2 projects free · Pay per project afterwards
         </span>
       </div>
       <div
@@ -347,7 +437,7 @@
       >
         {#each ecosystemStrip as item (item.roleCode)}
           <a
-            href="/signup?role={item.roleCode}"
+            href="/signup"
             class="inline-flex items-center gap-2 rounded-full border border-purple-400/25 bg-purple-500/10 px-3 py-1.5 text-white no-underline transition hover:border-fuchsia-400/70 hover:bg-purple-500/25 hover:text-fuchsia-100 hover:no-underline"
           >
             <Icon name={item.icon} size={15} class="text-fuchsia-300" />
@@ -369,10 +459,16 @@
     contain: layout paint;
   }
 
+  /* Isolate silk-wave SVG blur onto its own compositor layer so slide transitions never trigger SVG repaints */
+  .hero-backdrop {
+    transform: translateZ(0);
+    will-change: transform;
+    contain: strict;
+  }
+
   .hero-orb {
     position: absolute;
     border-radius: 9999px;
-    will-change: transform, opacity;
   }
 
   .hero-orb-top {
@@ -399,6 +495,62 @@
     background: radial-gradient(circle, rgba(124, 58, 237, 0.32) 0%, rgba(124, 58, 237, 0) 72%);
   }
 
+  /* Stacked GPU-composited slide transitions (zero layout shift, zero flicker) */
+  .hero-slide-stack {
+    display: grid;
+    align-items: center;
+  }
+
+  .hero-slide-item {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 1;
+    backface-visibility: hidden;
+    will-change: opacity, transform;
+    transition:
+      opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 560ms;
+  }
+
+  .hero-slide-item.hero-slide-active {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    visibility: visible;
+    pointer-events: auto;
+    z-index: 2;
+    transition:
+      opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0s;
+  }
+
+  .hero-caption-stack {
+    display: grid;
+    align-items: center;
+  }
+
+  .hero-caption-item {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    backface-visibility: hidden;
+    transition:
+      opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 480ms;
+  }
+
+  .hero-caption-item.hero-caption-active {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0s;
+  }
+
   .hero-headline-shine {
     background-image: linear-gradient(
       110deg,
@@ -412,6 +564,10 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /* Run shine & button sweep animations only on the visible active slide to eliminate background repaints */
+  .hero-slide-active .hero-headline-shine {
     animation: heroHeadlineShine 5s linear infinite;
   }
 
@@ -435,8 +591,11 @@
       rgba(255, 255, 255, 0.32) 50%,
       transparent 100%
     );
-    animation: heroBtnSweep 3.8s ease-in-out infinite;
     pointer-events: none;
+  }
+
+  .hero-slide-active .hero-btn-shine::after {
+    animation: heroBtnSweep 3.8s ease-in-out infinite;
   }
 
   @keyframes heroBtnSweep {
@@ -451,6 +610,9 @@
 
   .hero-ping {
     will-change: transform, opacity;
+  }
+
+  .hero-slide-active .hero-ping {
     animation: heroPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
 
@@ -466,22 +628,18 @@
     }
   }
 
-  .hero-sc-root :global(.sc-carousel__carousel-container),
-  .hero-sc-root :global(.sc-carousel__content-container),
-  .hero-sc-root :global(.sc-carousel__pages-window),
-  .hero-sc-root :global(.sc-carousel__pages-container) {
-    position: relative;
-    width: 100%;
-  }
-
-  .hero-sc-root :global(.sc-carousel__pages-container > *) {
-    flex-shrink: 0;
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .hero-headline-shine,
-    .hero-btn-shine::after,
-    .hero-ping {
+    .hero-slide-item,
+    .hero-slide-item.hero-slide-active,
+    .hero-caption-item,
+    .hero-caption-item.hero-caption-active {
+      transition: none !important;
+      transform: none !important;
+    }
+
+    .hero-slide-active .hero-headline-shine,
+    .hero-slide-active .hero-btn-shine::after,
+    .hero-slide-active .hero-ping {
       animation: none !important;
     }
   }

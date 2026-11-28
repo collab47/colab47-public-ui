@@ -1,4 +1,5 @@
 import { apiRequest } from './client';
+import type { ProjectPostingQuota } from './membership.api';
 
 export interface ApiProjectMedia {
   id: string;
@@ -174,12 +175,12 @@ export interface CreateProjectMediaPayload {
 
 export interface CreateProjectPayload {
   title: string;
-  brief: string;
+  brief?: string;
   projectOverview?: string;
   description?: string;
   problemStatement?: string;
   expectedDeliverables?: string;
-  sector: string;
+  sector?: string;
   sectorId?: string;
   primaryStemCategory?: ProjectStemCategory;
   primaryStemCategoryId?: string;
@@ -205,7 +206,7 @@ export interface CreateProjectPayload {
   deliverableUrl?: string;
   tags?: string[];
   milestones?: ProjectMilestoneInput[];
-  media: CreateProjectMediaPayload[];
+  media?: CreateProjectMediaPayload[];
 }
 
 export interface UpdateProjectPayload {
@@ -275,6 +276,13 @@ export interface PublicInvitationPreview {
 }
 
 export const projectsApi = {
+  getPostingQuota(): Promise<ProjectPostingQuota> {
+    return apiRequest<ProjectPostingQuota>('/projects/posting-quota', {
+      method: 'GET',
+      auth: true,
+    });
+  },
+
   getOptions(): Promise<ProjectEditorOptions> {
     return apiRequest<ProjectEditorOptions>('/projects/options', { method: 'GET', auth: true });
   },

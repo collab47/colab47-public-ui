@@ -21,6 +21,7 @@ import type {
 
 export interface CompleteOnboardingPayload {
   accountType: AccountType;
+  accountTypes?: AccountType[];
   occupations?: OccupationCode[];
   occupationOther?: string;
   college?: string;
@@ -42,6 +43,7 @@ export interface UpdateBasicInfoPayload {
   dateOfBirth?: string | null;
   dobPrivacy?: DobPrivacy;
   accountType?: AccountType;
+  accountTypes?: AccountType[];
   occupations?: OccupationCode[];
   occupationOther?: string | null;
   college?: string | null;

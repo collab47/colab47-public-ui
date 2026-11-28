@@ -350,14 +350,14 @@
           </p>
         </div>
         <span class="text-xs font-semibold text-purple-200/80">
-          {$t.auth.joiningAsLabel} → Click any role to sign up
+          Built for India's R&amp;D ecosystem · Post 2 projects free
         </span>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {#each publicRoleCards as role (role.roleCode)}
           <a
-            href="/signup?role={role.roleCode}"
+            href="/signup"
             class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#100726]/85 p-5 no-underline transition duration-300 hover:border-fuchsia-400/50 hover:bg-[#170B36] hover:shadow-[0_14px_40px_rgba(147,51,234,0.24)] hover:no-underline"
           >
             <div
@@ -478,7 +478,7 @@
         </div>
       </div>
 
-      <!-- Google Ads Banner (Shown on Free Membership & Guests; Hidden for Premium Members) -->
+      <!-- Google AdSense Banner -->
       <div class="mt-8">
         <GoogleAdSlot slot="home-bottom-banner" variant="banner" />
       </div>

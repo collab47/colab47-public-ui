@@ -205,7 +205,7 @@
       type="email"
       icon="mail"
       bind:value={email}
-      placeholder="ananya.sharma@iitb.ac.in"
+      placeholder="you@example.com"
       autocomplete="email"
       required
       error={touched.email || fieldErrors.email ? fieldErrors.email : undefined}

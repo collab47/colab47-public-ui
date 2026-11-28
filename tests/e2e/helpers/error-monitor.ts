@@ -44,7 +44,7 @@ export interface BrowserErrorMonitor {
  * - HTTP 4xx/5xx responses across page navigations and API calls
  */
 const THIRD_PARTY_NOISE_URL =
-  /googleads\.g\.doubleclick\.net|googlesyndication\.com|doubleclick\.net|googletagmanager\.com/i;
+  /googleads\.g\.doubleclick\.net|googlesyndication\.com|doubleclick\.net|googletagmanager\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|ipwho\.is/i;
 
 export function attachBrowserErrorMonitor(page: Page): BrowserErrorMonitor {
   const pageErrors: string[] = [];

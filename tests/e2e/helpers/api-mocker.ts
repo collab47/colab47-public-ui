@@ -11,6 +11,12 @@ import type {
   SocialLinkItem,
 } from '../../../src/lib/api/types';
 import type { ApiProject, ProjectEditorOptions } from '../../../src/lib/api/projects.api';
+import type {
+  PaymentTransaction,
+  ProjectPostingQuota,
+} from '../../../src/lib/api/membership.api';
+import type { BadgeProgress, UserBadgesSummary } from '../../../src/lib/api/badges.api';
+import { TEN_E2E_ACCOUNTS } from './ten-accounts';
 
 export interface MockRegisteredAccount {
   user: AuthUser;
@@ -170,7 +176,7 @@ function createMockUser(input: {
     openToCollaborations: true,
     membershipTier: 'free',
     membershipPlanCode: 'free',
-    adsEnabled: false,
+    adsEnabled: true,
     membershipExpiresAt: null,
     primaryIndustryId: null,
     createdAt: new Date().toISOString(),
@@ -628,12 +634,143 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
   const accounts = new Map<string, MockRegisteredAccount>();
   const profilesByUserId = new Map<string, FullProfile>();
   const mockProjects: ApiProject[] = [];
+  const mockTransactions: Array<
+    PaymentTransaction & { userId: string; sandboxPaymentId?: string; sandboxSignature?: string }
+  > = [];
+  const activityCounters = new Map<
+    string,
+    {
+      imagesUploaded: number;
+      videosUploaded: number;
+      postsPublished: number;
+      feedInteractions: number;
+      profileUpdates: number;
+    }
+  >();
+  const FREE_PROJECT_LIMIT = 2;
+  const PRICE_PER_PROJECT_PAISE = 8900;
+  const PRICE_PER_PROJECT_INR = 89;
   const requests: Array<{ method: string; path: string; status: number }> = [];
   const faults: Array<{
     pathPattern: RegExp;
     status: number;
     errorPayload: { errorCode: string; message: string };
   }> = [];
+
+  function getCounters(userId: string) {
+    let c = activityCounters.get(userId);
+    if (!c) {
+      c = {
+        imagesUploaded: 0,
+        videosUploaded: 0,
+        postsPublished: 0,
+        feedInteractions: 0,
+        profileUpdates: 0,
+      };
+      activityCounters.set(userId, c);
+    }
+    return c;
+  }
+
+  function computeMockQuota(userId: string): ProjectPostingQuota {
+    const authoredProjectsCount = mockProjects.filter(
+      (p) => p.authorId === userId && !p.isDraft,
+    ).length;
+    const capturedProjectTxs = mockTransactions.filter(
+      (tx) => tx.userId === userId && tx.purpose === 'project_post' && tx.status === 'captured',
+    );
+    const availablePaidSlots = capturedProjectTxs.filter(
+      (tx) => !tx.projectId && !tx.slotConsumedAt,
+    ).length;
+    const freeProjectsUsed = Math.min(authoredProjectsCount, FREE_PROJECT_LIMIT);
+    const freeProjectsRemaining = Math.max(0, FREE_PROJECT_LIMIT - authoredProjectsCount);
+    const requiresPaymentForNextProject = freeProjectsRemaining === 0 && availablePaidSlots === 0;
+    return {
+      freeProjectLimit: FREE_PROJECT_LIMIT,
+      authoredProjectsCount,
+      freeProjectsUsed,
+      freeProjectsRemaining,
+      availablePaidSlots,
+      totalPaidSlotsPurchased: capturedProjectTxs.length,
+      pricePerProjectPaise: PRICE_PER_PROJECT_PAISE,
+      pricePerProjectInr: PRICE_PER_PROJECT_INR,
+      currency: 'INR',
+      requiresPaymentForNextProject,
+      canCreateProjectNow: !requiresPaymentForNextProject,
+      nextProjectNumber: authoredProjectsCount + 1,
+    };
+  }
+
+  const MOCK_BADGE_DEFS: ReadonlyArray<
+    Omit<BadgeProgress, 'currentValue' | 'progressPercent' | 'earned' | 'earnedAt'>
+  > = [
+    { id: 'b-1', badgeCode: 'first_image_upload', name: 'Visual Storyteller', description: 'Upload your first image to a project, post, or profile.', category: 'images', tier: 'bronze', iconName: 'image', points: 10, criteriaMetric: 'images_uploaded', criteriaThreshold: 1 },
+    { id: 'b-2', badgeCode: 'gallery_curator', name: 'Gallery Curator', description: 'Upload 5 or more images showcasing builds and prototypes.', category: 'images', tier: 'silver', iconName: 'image', points: 25, criteriaMetric: 'images_uploaded', criteriaThreshold: 5 },
+    { id: 'b-3', badgeCode: 'first_video_upload', name: 'Demo Director', description: 'Upload your first video walkthrough or prototype demo.', category: 'videos', tier: 'bronze', iconName: 'eye', points: 15, criteriaMetric: 'videos_uploaded', criteriaThreshold: 1 },
+    { id: 'b-4', badgeCode: 'video_innovator', name: 'Video Innovator', description: 'Upload 3 or more demo videos across your projects and posts.', category: 'videos', tier: 'gold', iconName: 'eye', points: 40, criteriaMetric: 'videos_uploaded', criteriaThreshold: 3 },
+    { id: 'b-5', badgeCode: 'first_post', name: 'Community Voice', description: 'Publish your first update or showcase post on the feed.', category: 'posts', tier: 'bronze', iconName: 'message-square', points: 10, criteriaMetric: 'posts_published', criteriaThreshold: 1 },
+    { id: 'b-6', badgeCode: 'feed_trailblazer', name: 'Feed Trailblazer', description: 'Publish 5 or more posts sharing progress with the community.', category: 'posts', tier: 'silver', iconName: 'message-square', points: 30, criteriaMetric: 'posts_published', criteriaThreshold: 5 },
+    { id: 'b-7', badgeCode: 'feed_catalyst', name: 'Feed Catalyst', description: 'Engage with the community via 5+ likes, comments, bookmarks, or reposts.', category: 'feeds', tier: 'bronze', iconName: 'heart', points: 15, criteriaMetric: 'feed_interactions', criteriaThreshold: 5 },
+    { id: 'b-8', badgeCode: 'super_connector', name: 'Super Connector', description: 'Reach 15+ feed interactions across posts and projects.', category: 'feeds', tier: 'gold', iconName: 'sparkles', points: 35, criteriaMetric: 'feed_interactions', criteriaThreshold: 15 },
+    { id: 'b-9', badgeCode: 'first_project', name: 'Project Pioneer', description: 'Publish your first innovation project on Collab47.', category: 'projects', tier: 'bronze', iconName: 'rocket', points: 20, criteriaMetric: 'projects_authored', criteriaThreshold: 1 },
+    { id: 'b-10', badgeCode: 'serial_builder', name: 'Serial Builder', description: 'Publish 2 or more projects on your workbench.', category: 'projects', tier: 'silver', iconName: 'layers', points: 35, criteriaMetric: 'projects_authored', criteriaThreshold: 2 },
+    { id: 'b-11', badgeCode: 'power_innovator', name: 'Power Innovator', description: 'Publish 3 or more projects demonstrating sustained proof of work.', category: 'projects', tier: 'gold', iconName: 'award', points: 60, criteriaMetric: 'projects_authored', criteriaThreshold: 3 },
+    { id: 'b-12', badgeCode: 'profile_architect', name: 'Profile Architect', description: 'Update your profile details to build your innovation identity.', category: 'profile', tier: 'bronze', iconName: 'user', points: 10, criteriaMetric: 'profile_updates', criteriaThreshold: 1 },
+    { id: 'b-13', badgeCode: 'multi_persona_creator', name: 'Multi-Disciplinary', description: 'Select 2 or more account persona roles on your profile.', category: 'profile', tier: 'silver', iconName: 'users', points: 25, criteriaMetric: 'persona_roles', criteriaThreshold: 2 },
+    { id: 'b-14', badgeCode: 'profile_allstar', name: 'All-Star Portfolio', description: 'Reach 80% or higher profile completeness with skills and credentials.', category: 'profile', tier: 'platinum', iconName: 'shield-check', points: 50, criteriaMetric: 'profile_completeness', criteriaThreshold: 80 },
+  ];
+
+  function computeMockBadges(userId: string): UserBadgesSummary {
+    const c = getCounters(userId);
+    const profile = profilesByUserId.get(userId);
+    const authoredProjects = mockProjects.filter((p) => p.authorId === userId).length;
+    const projectImages = mockProjects
+      .filter((p) => p.authorId === userId)
+      .reduce((sum, p) => sum + p.media.filter((m) => m.kind === 'image').length, 0);
+    const projectVideos = mockProjects
+      .filter((p) => p.authorId === userId)
+      .reduce((sum, p) => sum + p.media.filter((m) => m.kind === 'video').length, 0);
+    const metricValues: Record<string, number> = {
+      images_uploaded: Math.max(c.imagesUploaded, projectImages),
+      videos_uploaded: Math.max(c.videosUploaded, projectVideos),
+      posts_published: c.postsPublished,
+      feed_interactions: c.feedInteractions,
+      projects_authored: authoredProjects,
+      profile_updates: c.profileUpdates,
+      persona_roles: profile?.roles.length ?? 1,
+      profile_completeness: profile?.completenessPercent ?? 35,
+    };
+
+    const nowIso = new Date().toISOString();
+    const badges: BadgeProgress[] = MOCK_BADGE_DEFS.map((def) => {
+      const currentValue = metricValues[def.criteriaMetric] ?? 0;
+      const earned = currentValue >= def.criteriaThreshold;
+      return {
+        ...def,
+        currentValue,
+        progressPercent: earned
+          ? 100
+          : Math.min(99, Math.round((currentValue / Math.max(1, def.criteriaThreshold)) * 100)),
+        earned,
+        earnedAt: earned ? nowIso : null,
+      };
+    });
+    const earnedBadges = badges.filter((b) => b.earned);
+    const totalPoints = earnedBadges.reduce((s, b) => s + b.points, 0);
+    const level = totalPoints >= 280 ? 5 : totalPoints >= 180 ? 4 : totalPoints >= 100 ? 3 : totalPoints >= 40 ? 2 : 1;
+    const levelTitles = ['Rising Explorer', 'Active Builder', 'Innovation Contributor', 'Viksit Bharat Pioneer', 'Collab47 Luminary'];
+    const nextPoints = [40, 100, 180, 280, 280][level - 1] ?? 280;
+    return {
+      totalPoints,
+      earnedCount: earnedBadges.length,
+      totalBadges: badges.length,
+      level,
+      levelTitle: levelTitles[level - 1] ?? 'Rising Explorer',
+      nextLevelPoints: nextPoints,
+      newlyAwarded: [],
+      badges,
+    };
+  }
 
   // Seed default mock accounts for direct login tests
   const seededStudent = createMockUser({
@@ -664,6 +801,26 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
   });
   profilesByUserId.set(seededResearcher.id, createInitialMockProfile(seededResearcher));
 
+  // Seed all 10 multi-account E2E personas (all using Password123@)
+  for (const seed of TEN_E2E_ACCOUNTS) {
+    const user = createMockUser({
+      id: seed.id,
+      name: seed.name,
+      email: seed.email,
+      accountType: seed.primaryPersona,
+      mobileCountryCode: '+91',
+      mobileNumber: seed.mobileNumber,
+    });
+    accounts.set(user.email, {
+      user,
+      password: seed.password,
+    });
+    profilesByUserId.set(user.id, createInitialMockProfile(user));
+  }
+
+  // Mutable feed posts store so newly published posts appear live in /dashboard/feed across all 10 accounts
+  const liveFeedPosts: Array<Record<string, unknown>> = [...buildMockFeedPosts()];
+
   let activeUser: AuthUser = seededStudent;
   let userCounter = 2000;
   let entityCounter = 100;
@@ -676,6 +833,29 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
     }
     return profile;
   }
+
+  // Intercept external third-party assets (Google Fonts, AdSense script, IP geolocation)
+  // so mocked frontend E2E suites run deterministically offline without DNS failures.
+  await page.route(/^https:\/\/fonts\.googleapis\.com\/.*/i, async (route: Route) => {
+    await route.fulfill({ status: 200, contentType: 'text/css', body: '' });
+  });
+  await page.route(/^https:\/\/fonts\.gstatic\.com\/.*/i, async (route: Route) => {
+    await route.fulfill({ status: 200, contentType: 'font/woff2', body: '' });
+  });
+  await page.route(/^https:\/\/(pagead2\.googlesyndication\.com|googleads\.g\.doubleclick\.net)\/.*/i, async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: 'window.adsbygoogle = window.adsbygoogle || [];',
+    });
+  });
+  await page.route(/^https:\/\/ipwho\.is\/.*/i, async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, country_code: 'IN', calling_code: '91' }),
+    });
+  });
 
   // Intercept mocked direct-to-bucket uploads cleanly so zero real network upload is attempted
   await page.route('**/mock-bucket-upload', async (route: Route) => {
@@ -818,7 +998,7 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
             expiresIn: 3600,
             tokenType: 'Bearer',
           },
-          redirectTo: '/signup/plan',
+          redirectTo: '/onboarding',
           joinedProjectTitles: [],
         },
         apiPath,
@@ -891,7 +1071,132 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
       return;
     }
 
-    // --- Membership endpoints ---
+    // --- Billing, Pay-Per-Project & Legacy Membership endpoints ---
+    if (method === 'GET' && apiPath === '/membership/billing') {
+      const userPayments = mockTransactions
+        .filter((tx) => tx.userId === activeUser.id)
+        .map(({ userId: _u, sandboxPaymentId: _sp, sandboxSignature: _ss, ...rest }) => rest);
+      await fulfillJson(
+        route,
+        200,
+        {
+          quota: computeMockQuota(activeUser.id),
+          recentPayments: userPayments,
+        },
+        apiPath,
+      );
+      return;
+    }
+
+    if (method === 'GET' && (apiPath === '/membership/project-quota' || apiPath === '/projects/posting-quota')) {
+      await fulfillJson(route, 200, computeMockQuota(activeUser.id), apiPath);
+      return;
+    }
+
+    if (method === 'POST' && apiPath === '/membership/payments/create-project-order') {
+      const payload = (req.postDataJSON() ?? {}) as { preferredMethod?: PaymentTransaction['paymentMethod'] };
+      entityCounter += 1;
+      const quota = computeMockQuota(activeUser.id);
+      const gatewayOrderId = `order_c47_mock_${entityCounter}`;
+      const sandboxPaymentId = `pay_c47_mock_${entityCounter}`;
+      const sandboxSignature = `sig_c47_mock_${entityCounter}`;
+      const receiptNumber = `C47P-MOCK-${entityCounter}`;
+      const nowIso = new Date().toISOString();
+
+      const tx: PaymentTransaction & {
+        userId: string;
+        sandboxPaymentId?: string;
+        sandboxSignature?: string;
+      } = {
+        id: `tx-mock-${entityCounter}`,
+        userId: activeUser.id,
+        purpose: 'project_post',
+        projectId: null,
+        projectTitle: null,
+        slotConsumedAt: null,
+        gateway: 'sandbox_inr',
+        gatewayOrderId,
+        gatewayPaymentId: null,
+        paymentMethod: payload.preferredMethod ?? 'upi',
+        paymentMethodDetails: {},
+        amountPaise: PRICE_PER_PROJECT_PAISE,
+        amountInr: PRICE_PER_PROJECT_INR,
+        currency: 'INR',
+        status: 'created',
+        receiptNumber,
+        failureReason: null,
+        paidAt: null,
+        createdAt: nowIso,
+        sandboxPaymentId,
+        sandboxSignature,
+      };
+      mockTransactions.unshift(tx);
+
+      await fulfillJson(
+        route,
+        201,
+        {
+          transactionId: tx.id,
+          purpose: 'project_post',
+          gateway: 'sandbox_inr',
+          gatewayOrderId,
+          gatewayKeyId: null,
+          planCode: null,
+          planName: `Project Posting Credit (Project #${quota.nextProjectNumber})`,
+          itemDescription: `One-time fee (₹${PRICE_PER_PROJECT_INR}) to publish project #${quota.nextProjectNumber} on Collab47`,
+          amountPaise: PRICE_PER_PROJECT_PAISE,
+          amountInr: PRICE_PER_PROJECT_INR,
+          currency: 'INR',
+          receiptNumber,
+          supportedMethods: ['upi', 'credit_card', 'debit_card', 'netbanking', 'bank_transfer'],
+          isSandbox: true,
+          sandboxPaymentId,
+          sandboxSignature,
+        },
+        apiPath,
+      );
+      return;
+    }
+
+    if (method === 'POST' && apiPath === '/membership/payments/verify') {
+      const payload = (req.postDataJSON() ?? {}) as {
+        gatewayOrderId?: string;
+        gatewayPaymentId?: string;
+        paymentMethod?: PaymentTransaction['paymentMethod'];
+        paymentMethodDetails?: Record<string, unknown>;
+      };
+      const tx = mockTransactions.find((t) => t.gatewayOrderId === payload.gatewayOrderId);
+      if (!tx) {
+        await fulfillJson(
+          route,
+          404,
+          { statusCode: 404, errorCode: 'PAYMENT_ORDER_NOT_FOUND', message: 'Payment order not found.' },
+          apiPath,
+        );
+        return;
+      }
+      tx.status = 'captured';
+      tx.gatewayPaymentId = payload.gatewayPaymentId ?? tx.sandboxPaymentId ?? 'pay_mock';
+      tx.paymentMethod = payload.paymentMethod ?? 'upi';
+      tx.paymentMethodDetails = payload.paymentMethodDetails ?? {};
+      tx.paidAt = new Date().toISOString();
+
+      const { userId: _u, sandboxPaymentId: _sp, sandboxSignature: _ss, ...cleanTx } = tx;
+      await fulfillJson(
+        route,
+        200,
+        {
+          verified: true,
+          purpose: tx.purpose,
+          membership: null,
+          quota: computeMockQuota(tx.userId),
+          transaction: cleanTx,
+        },
+        apiPath,
+      );
+      return;
+    }
+
     if (method === 'GET' && apiPath === '/membership/plans') {
       await fulfillJson(route, 200, buildMockPlans(), apiPath);
       return;
@@ -968,7 +1273,129 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
     }
 
     if (method === 'GET' && apiPath === '/dashboard/feed') {
-      await fulfillJson(route, 200, buildMockFeedPosts(), apiPath);
+      await fulfillJson(route, 200, liveFeedPosts, apiPath);
+      return;
+    }
+
+    if (method === 'POST' && apiPath === '/dashboard/posts') {
+      const payload = (req.postDataJSON() ?? {}) as {
+        body?: string;
+        tags?: string[];
+        postType?: string;
+        attachedProjectId?: string;
+        media?: Array<{ kind: string; url: string; title?: string; isCover?: boolean }>;
+      };
+      entityCounter += 1;
+      getCounters(activeUser.id).postsPublished += 1;
+      const newPost = {
+        id: `post-mock-${entityCounter}`,
+        authorId: activeUser.id,
+        authorName: activeUser.name,
+        authorHandle: activeUser.handle,
+        authorRole: activeUser.accountType,
+        authorHeadline: null,
+        authorCollege: activeUser.college,
+        authorBranch: activeUser.branch,
+        authorAvatarUrl: activeUser.avatarUrl,
+        postType: payload.postType ?? 'project_showcase',
+        attachedProjectId: payload.attachedProjectId ?? null,
+        projectTitle: payload.attachedProjectId
+          ? (mockProjects.find((p) => p.id === payload.attachedProjectId)?.title ?? null)
+          : null,
+        locationLabel: 'Mumbai, IN',
+        body: payload.body ?? '',
+        tags: payload.tags ?? [],
+        media: (payload.media ?? []).map((m, idx) => ({
+          id: `pm-${entityCounter}-${idx + 1}`,
+          kind: m.kind ?? 'image',
+          url: m.url,
+          title: m.title ?? `Post Media ${idx + 1}`,
+          isCover: Boolean(m.isCover ?? idx === 0),
+        })),
+        likesCount: 0,
+        commentsCount: 0,
+        repostCount: 0,
+        viewsCount: 1,
+        isLiked: false,
+        isReposted: false,
+        isBookmarked: false,
+        isFollowingAuthor: false,
+        comments: [],
+        createdAt: new Date().toISOString(),
+      };
+      liveFeedPosts.unshift(newPost);
+      await fulfillJson(route, 201, newPost, apiPath);
+      return;
+    }
+
+    if (method === 'POST' && /^\/dashboard\/posts\/[^/]+\/(like|bookmark|comments|repost)$/.test(apiPath)) {
+      getCounters(activeUser.id).feedInteractions += 1;
+      if (apiPath.endsWith('/like')) {
+        await fulfillJson(route, 200, { liked: true, likesCount: 1 }, apiPath);
+        return;
+      }
+      if (apiPath.endsWith('/bookmark')) {
+        await fulfillJson(route, 200, { bookmarked: true, saveCount: 1 }, apiPath);
+        return;
+      }
+      if (apiPath.endsWith('/repost')) {
+        await fulfillJson(route, 200, { reposted: true, repostCount: 1 }, apiPath);
+        return;
+      }
+      entityCounter += 1;
+      await fulfillJson(
+        route,
+        201,
+        {
+          id: `cmt-mock-${entityCounter}`,
+          authorId: activeUser.id,
+          authorName: activeUser.name,
+          authorHandle: activeUser.handle,
+          authorRole: activeUser.accountType,
+          body: 'Great build!',
+          likesCount: 0,
+          isLiked: false,
+          createdAt: new Date().toISOString(),
+        },
+        apiPath,
+      );
+      return;
+    }
+
+    // --- Activity Badges endpoints ---
+    if (method === 'GET' && apiPath === '/badges/catalog') {
+      await fulfillJson(
+        route,
+        200,
+        MOCK_BADGE_DEFS.map((def) => ({
+          ...def,
+          currentValue: 0,
+          progressPercent: 0,
+          earned: false,
+          earnedAt: null,
+        })),
+        apiPath,
+      );
+      return;
+    }
+
+    if (method === 'GET' && apiPath === '/badges/me') {
+      await fulfillJson(route, 200, computeMockBadges(activeUser.id), apiPath);
+      return;
+    }
+
+    if (method === 'GET' && apiPath.startsWith('/badges/u/')) {
+      const handle = decodeURIComponent(apiPath.replace('/badges/u/', '')).toLowerCase();
+      const matchedProfile = Array.from(profilesByUserId.values()).find(
+        (p) => p.handle.toLowerCase() === handle,
+      );
+      const summary = computeMockBadges(matchedProfile?.id ?? activeUser.id);
+      await fulfillJson(
+        route,
+        200,
+        { ...summary, badges: summary.badges.filter((b) => b.earned) },
+        apiPath,
+      );
       return;
     }
 
@@ -1033,6 +1460,12 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
       const folder = payload.folder || 'projects';
       const fileName = payload.fileName || `upload-${entityCounter}.png`;
       const contentType = payload.contentType || 'image/png';
+      const kind = contentType.startsWith('video/') ? 'video' : 'image';
+      if (kind === 'video') {
+        getCounters(activeUser.id).videosUploaded += 1;
+      } else {
+        getCounters(activeUser.id).imagesUploaded += 1;
+      }
       const key = `${folder}/${entityCounter}-${fileName}`;
       await fulfillJson(
         route,
@@ -1097,15 +1530,91 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
       return;
     }
 
-    if (method === 'PATCH' && apiPath === '/profile/basic-info') {
-      const payload = (req.postDataJSON() ?? {}) as Partial<FullProfile>;
+    if (method === 'GET' && apiPath.startsWith('/profile/u/')) {
+      const handle = decodeURIComponent(apiPath.replace('/profile/u/', '')).toLowerCase();
+      const matched = Array.from(profilesByUserId.values()).find(
+        (p) => p.handle.toLowerCase() === handle,
+      );
+      await fulfillJson(route, 200, matched ?? getOrCreateActiveProfile(), apiPath);
+      return;
+    }
+
+    if (method === 'PUT' && apiPath === '/profile/onboarding') {
+      const payload = (req.postDataJSON() ?? {}) as Partial<FullProfile> & {
+        accountTypes?: AccountType[];
+      };
       const profile = getOrCreateActiveProfile();
-      Object.assign(profile, payload, { updatedAt: new Date().toISOString() });
+      const chosenRoles =
+        Array.isArray(payload.accountTypes) && payload.accountTypes.length > 0
+          ? payload.accountTypes
+          : payload.accountType
+            ? [payload.accountType]
+            : [profile.accountType];
+      profile.accountType = chosenRoles[0] ?? 'student';
+      profile.primaryRole = profile.accountType;
+      profile.roles = chosenRoles.map((code, idx) => {
+        const meta = MOCK_PUBLIC_ROLES.find((r) => r.roleCode === code) ?? MOCK_PUBLIC_ROLES[0];
+        return {
+          roleId: meta.id,
+          roleCode: meta.roleCode,
+          roleName: meta.roleName,
+          badgeLabel: meta.badgeLabel,
+          isPrimary: idx === 0,
+          scopeType: 'global',
+        };
+      });
+      if (payload.college !== undefined) profile.college = payload.college;
+      if (payload.branch !== undefined) profile.branch = payload.branch;
+      if (payload.yearOfStudy !== undefined) profile.yearOfStudy = payload.yearOfStudy;
+      if (payload.city !== undefined) profile.city = payload.city;
+      if (payload.handle) profile.handle = payload.handle;
+      if (payload.avatarUrl) profile.avatarUrl = payload.avatarUrl;
+      getCounters(activeUser.id).profileUpdates += 1;
+      profile.completenessPercent = recomputeProfileCompleteness(profile);
+      activeUser = {
+        ...activeUser,
+        handle: profile.handle,
+        accountType: profile.accountType,
+        primaryRole: profile.primaryRole,
+        roles: profile.roles,
+        college: profile.college,
+        city: profile.city,
+      };
+      await fulfillJson(route, 200, profile, apiPath);
+      return;
+    }
+
+    if (method === 'PATCH' && apiPath === '/profile/basic-info') {
+      const payload = (req.postDataJSON() ?? {}) as Partial<FullProfile> & {
+        accountTypes?: AccountType[];
+      };
+      const profile = getOrCreateActiveProfile();
+      const { accountTypes: requestedAccountTypes, ...restPayload } = payload;
+      Object.assign(profile, restPayload, { updatedAt: new Date().toISOString() });
+      if (Array.isArray(requestedAccountTypes) && requestedAccountTypes.length > 0) {
+        profile.accountType = requestedAccountTypes[0] ?? profile.accountType;
+        profile.primaryRole = profile.accountType;
+        profile.roles = requestedAccountTypes.map((code, idx) => {
+          const meta = MOCK_PUBLIC_ROLES.find((r) => r.roleCode === code) ?? MOCK_PUBLIC_ROLES[0];
+          return {
+            roleId: meta.id,
+            roleCode: meta.roleCode,
+            roleName: meta.roleName,
+            badgeLabel: meta.badgeLabel,
+            isPrimary: idx === 0,
+            scopeType: 'global',
+          };
+        });
+      }
+      getCounters(activeUser.id).profileUpdates += 1;
       profile.completenessPercent = recomputeProfileCompleteness(profile);
       activeUser = {
         ...activeUser,
         name: profile.name,
         handle: profile.handle,
+        accountType: profile.accountType,
+        primaryRole: profile.primaryRole,
+        roles: profile.roles,
         college: profile.college,
         branch: profile.branch,
         yearOfStudy: profile.yearOfStudy,
@@ -1317,6 +1826,27 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
 
     if (method === 'POST' && apiPath === '/projects') {
       const payload = (req.postDataJSON() ?? {}) as Record<string, unknown>;
+      const isDraft = Boolean(payload.isDraft);
+      const quota = computeMockQuota(activeUser.id);
+      if (!isDraft && quota.requiresPaymentForNextProject) {
+        await fulfillJson(
+          route,
+          402,
+          {
+            statusCode: 402,
+            errorCode: 'PROJECT_PAYMENT_REQUIRED',
+            message: `You have already posted ${FREE_PROJECT_LIMIT} free projects. Pay ₹${PRICE_PER_PROJECT_INR} to unlock posting this project.`,
+            freeProjectLimit: FREE_PROJECT_LIMIT,
+            authoredProjectsCount: quota.authoredProjectsCount,
+            pricePerProjectPaise: PRICE_PER_PROJECT_PAISE,
+            pricePerProjectInr: PRICE_PER_PROJECT_INR,
+            currency: 'INR',
+          },
+          apiPath,
+        );
+        return;
+      }
+
       entityCounter += 1;
       const nowIso = new Date().toISOString();
       const projectId = `proj-mock-${entityCounter}`;
@@ -1429,8 +1959,131 @@ export async function installMockCollab47Api(page: Page): Promise<MockApiControl
         updatedAt: nowIso,
       };
 
+      const authoredBefore = mockProjects.filter(
+        (p) => p.authorId === activeUser.id && !p.isDraft,
+      ).length;
+      if (!createdProject.isDraft && authoredBefore >= FREE_PROJECT_LIMIT) {
+        const slotTx = [...mockTransactions]
+          .reverse()
+          .find(
+            (tx) =>
+              tx.userId === activeUser.id &&
+              tx.purpose === 'project_post' &&
+              tx.status === 'captured' &&
+              !tx.projectId &&
+              !tx.slotConsumedAt,
+          );
+        if (slotTx) {
+          slotTx.projectId = createdProject.id;
+          slotTx.projectTitle = createdProject.title;
+          slotTx.slotConsumedAt = nowIso;
+        }
+      }
+
       mockProjects.unshift(createdProject);
       await fulfillJson(route, 201, createdProject, apiPath);
+      return;
+    }
+
+    if (method === 'PATCH' && /^\/projects\/[^/]+$/.test(apiPath)) {
+      const projectId = apiPath.split('/')[2] ?? '';
+      const target = mockProjects.find((p) => p.id === projectId);
+      if (!target) {
+        await fulfillJson(route, 404, { errorCode: 'PROJECT_NOT_FOUND', message: 'Project not found.' }, apiPath);
+        return;
+      }
+      const payload = (req.postDataJSON() ?? {}) as Record<string, unknown>;
+      const wasDraft = target.isDraft;
+      const nextIsDraft = payload.isDraft !== undefined ? Boolean(payload.isDraft) : target.isDraft;
+      if (wasDraft && !nextIsDraft) {
+        const quota = computeMockQuota(activeUser.id);
+        if (quota.requiresPaymentForNextProject) {
+          await fulfillJson(
+            route,
+            402,
+            {
+              statusCode: 402,
+              errorCode: 'PROJECT_PAYMENT_REQUIRED',
+              message: `You have already posted ${FREE_PROJECT_LIMIT} free projects. Pay ₹${PRICE_PER_PROJECT_INR} to unlock publishing this project.`,
+            },
+            apiPath,
+          );
+          return;
+        }
+        const authoredBefore = mockProjects.filter(
+          (p) => p.authorId === activeUser.id && !p.isDraft && p.id !== target.id,
+        ).length;
+        if (authoredBefore >= FREE_PROJECT_LIMIT) {
+          const slotTx = [...mockTransactions]
+            .reverse()
+            .find(
+              (tx) =>
+                tx.userId === activeUser.id &&
+                tx.purpose === 'project_post' &&
+                tx.status === 'captured' &&
+                !tx.projectId &&
+                !tx.slotConsumedAt,
+            );
+          if (slotTx) {
+            slotTx.projectId = target.id;
+            slotTx.projectTitle = String(payload.title ?? target.title);
+            slotTx.slotConsumedAt = new Date().toISOString();
+          }
+        }
+      }
+      if (payload.title !== undefined) target.title = String(payload.title);
+      if (payload.brief !== undefined) target.brief = String(payload.brief);
+      if (payload.sector !== undefined) target.sector = String(payload.sector);
+      target.isDraft = nextIsDraft;
+      target.updatedAt = new Date().toISOString();
+      await fulfillJson(route, 200, target, apiPath);
+      return;
+    }
+
+    if (method === 'POST' && /^\/projects\/[^/]+\/media$/.test(apiPath)) {
+      const projectId = apiPath.split('/')[2] ?? '';
+      const target = mockProjects.find((p) => p.id === projectId);
+      const payload = (req.postDataJSON() ?? {}) as {
+        items?: Array<{
+          kind: 'image' | 'video';
+          url: string;
+          title?: string;
+          mimeType?: string;
+          fileSizeBytes?: number;
+          isCover?: boolean;
+        }>;
+      };
+      const nowIso = new Date().toISOString();
+      const added = (payload.items ?? []).map((m, idx) => {
+        entityCounter += 1;
+        return {
+          id: `media-mock-${entityCounter}-${idx + 1}`,
+          projectId,
+          kind: m.kind,
+          url: m.url,
+          title: m.title ?? `media-${idx + 1}`,
+          mimeType: m.mimeType ?? 'image/png',
+          fileSizeBytes: m.fileSizeBytes ?? 2048,
+          isCover: Boolean(m.isCover),
+          createdAt: nowIso,
+        };
+      });
+      if (target) {
+        target.media = [...target.media, ...added];
+      }
+      await fulfillJson(route, 201, added, apiPath);
+      return;
+    }
+
+    if (method === 'PATCH' && /^\/projects\/[^/]+\/media\/[^/]+\/cover$/.test(apiPath)) {
+      const parts = apiPath.split('/');
+      const projectId = parts[2] ?? '';
+      const mediaId = parts[4] ?? '';
+      const target = mockProjects.find((p) => p.id === projectId);
+      if (target) {
+        target.media = target.media.map((m) => ({ ...m, isCover: m.id === mediaId }));
+      }
+      await fulfillJson(route, 200, { updated: true }, apiPath);
       return;
     }
 

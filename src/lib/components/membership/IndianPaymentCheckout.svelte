@@ -215,12 +215,14 @@
             gatewaySignature: resp.razorpay_signature,
             paymentMethod: effectiveMethod,
           });
-          updateAuthUserMembership({
-            tier: verified.membership.tier,
-            planCode: verified.membership.planCode,
-            adsEnabled: verified.membership.adsEnabled,
-            expiresAt: verified.membership.expiresAt,
-          });
+          if (verified.membership) {
+            updateAuthUserMembership({
+              tier: verified.membership.tier,
+              planCode: verified.membership.planCode,
+              adsEnabled: verified.membership.adsEnabled,
+              expiresAt: verified.membership.expiresAt,
+            });
+          }
           onSuccess(verified);
         } catch (err) {
           checkoutError =
@@ -276,17 +278,25 @@
         paymentMethodDetails: details,
       });
 
-      updateAuthUserMembership({
-        tier: verified.membership.tier,
-        planCode: verified.membership.planCode,
-        adsEnabled: verified.membership.adsEnabled,
-        expiresAt: verified.membership.expiresAt,
-      });
+      if (verified.membership) {
+        updateAuthUserMembership({
+          tier: verified.membership.tier,
+          planCode: verified.membership.planCode,
+          adsEnabled: verified.membership.adsEnabled,
+          expiresAt: verified.membership.expiresAt,
+        });
+      }
 
       pushToast({
         tone: 'success',
-        title: 'Premium Membership Activated!',
-        message: `Paid ₹${order.amountInr} via ${effectiveMethod.replace('_', ' ').toUpperCase()}. Google Ads are now disabled.`,
+        title:
+          order.purpose === 'project_post'
+            ? 'Payment Verified — Project Slot Unlocked!'
+            : 'Payment Verified!',
+        message:
+          order.purpose === 'project_post'
+            ? `Paid ₹${order.amountInr} via ${effectiveMethod.replace('_', ' ').toUpperCase()}. Receipt ${order.receiptNumber} issued.`
+            : `Paid ₹${order.amountInr} via ${effectiveMethod.replace('_', ' ').toUpperCase()}.`,
       });
 
       onSuccess(verified);
@@ -324,7 +334,11 @@
       </div>
       <div class="text-right">
         <strong class="block text-xl font-extrabold text-logo-saffron">₹{order.amountInr}</strong>
-        <span class="text-xs font-medium text-logo-green">Incl. GST · Zero Ads</span>
+        <span class="text-xs font-medium text-logo-green">
+          {order.purpose === 'project_post'
+            ? 'Incl. GST · 1 Project Post Credit'
+            : 'Incl. GST'}
+        </span>
       </div>
     </div>
 

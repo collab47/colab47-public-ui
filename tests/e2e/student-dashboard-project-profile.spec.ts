@@ -19,8 +19,8 @@ async function loginAsMockStudent(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
 }
 
-test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile', () => {
-  test('1. Student dashboard renders hero, metrics, checklist, and feed with zero errors', async ({
+test.describe('Collab47 Dashboard E2E — Add Project, Multi-Role Profile, Badges & Ads', () => {
+  test('1. Dashboard renders hero, metrics, checklist, feed, Badges & Level widget, and AdSense unit', async ({
     page,
   }) => {
     await installMockCollab47Api(page);
@@ -33,10 +33,18 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
     await expect(page.getByText('Autonomous Solar Micro-Grid Controller').first()).toBeVisible();
     await expect(page.getByText('Publish first living workbench project').first()).toBeVisible();
 
+    // Badges & Level widget on dashboard right rail
+    await expect(page.getByText('Badges & Level')).toBeVisible();
+    await expect(page.locator('a[href="/profile?tab=badges"]').first()).toBeVisible();
+
+    // Google AdSense <ins class="adsbygoogle"> unit without plan-upgrade CTA
+    await expect(page.locator('ins.adsbygoogle').first()).toBeAttached();
+    await expect(page.getByText('Remove ads with Premium')).toHaveCount(0);
+
     monitor.assertClean();
   });
 
-  test('2. Student adds a new project via the 6-step wizard with validation, cover upload, team invite & publish', async ({
+  test('2. User adds a free project via 6-step wizard with quota banner, cover upload, team invite & publish', async ({
     page,
   }) => {
     await installMockCollab47Api(page);
@@ -44,9 +52,11 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
 
     await loginAsMockStudent(page);
 
-    // Open Create Project wizard from Student Dashboard hero CTA
+    // Open Create Project wizard from Dashboard CTA
     await page.locator('a[href="/projects/new"]').first().click();
     await expect(page).toHaveURL(/\/projects\/new/);
+    await expect(page.getByText(/Free Project 1 of 2/i)).toBeVisible();
+    await expect(page.getByText(/₹89\/project from 3rd onwards/i)).toBeVisible();
     await expect(page.locator('#proj-title')).toBeVisible();
 
     // --- STEP 1: Core Identity (+ validation error detection) ---
@@ -70,6 +80,17 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
       .fill(
         'Built on Jetson Orin Nano + ROS2 Humble with quantized YOLOv8n achieving 38 FPS thermal + RGB inference.',
       );
+
+    // Verify Save Draft works right on Step 1 before advancing!
+    await expect(page.getByRole('button', { name: /Save Draft/i })).toBeVisible();
+    const [draftCreateRes] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.request().method() === 'POST' && res.url().endsWith('/api/v1/projects'),
+      ),
+      page.getByRole('button', { name: /Save Draft/i }).click(),
+    ]);
+    expect(draftCreateRes.status()).toBe(201);
+    await expect(page.getByText(/Draft saved/i).first()).toBeVisible();
 
     await page.getByRole('button', { name: /Next: Step 2/i }).click();
 
@@ -142,25 +163,29 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
     await page.getByRole('button', { name: /Add Contributor to Queue/i }).click();
     await expect(page.getByText('rohan.verma@iitb.ac.in')).toBeVisible();
 
+    // Verify Save Draft button is also present on Step 5 & Step 6
+    await expect(page.getByRole('button', { name: /Save Draft/i })).toBeVisible();
     await page.getByRole('button', { name: /Next: Step 6/i }).click();
 
     // --- STEP 6: Final Preview & Publish ---
     await expect(page.getByRole('heading', { name: projectTitle })).toBeVisible();
     await expect(page.getByText('Hardware Prototype Assembly')).toBeVisible();
     await expect(page.getByText('rohan.verma@iitb.ac.in')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Save Draft/i })).toBeVisible();
 
-    const [createProjRes, inviteRes] = await Promise.all([
+    const [publishProjRes, inviteRes] = await Promise.all([
       page.waitForResponse(
-        (res) => res.request().method() === 'POST' && res.url().endsWith('/api/v1/projects'),
+        (res) =>
+          res.request().method() === 'PATCH' && /\/api\/v1\/projects\/proj-mock-\d+$/.test(res.url()),
       ),
       page.waitForResponse(
         (res) =>
           res.request().method() === 'POST' && /\/api\/v1\/projects\/[^/]+\/invitations$/.test(res.url()),
       ),
-      page.getByRole('button', { name: /Publish Project Now/i }).click(),
+      page.getByRole('button', { name: /Publish Project/i }).click(),
     ]);
 
-    expect(createProjRes.status()).toBe(201);
+    expect(publishProjRes.status()).toBe(200);
     expect(inviteRes.status()).toBe(201);
 
     await expect(page).toHaveURL(/\/projects\/proj-mock-/, { timeout: 15_000 });
@@ -170,7 +195,7 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
     monitor.assertClean();
   });
 
-  test('3. Student completes all 5 progressive profile sections and reaches 100% completeness with zero errors', async ({
+  test('3. User selects multiple Account Persona roles, completes all 5 profile sections, and unlocks Activity Badges', async ({
     page,
   }) => {
     await installMockCollab47Api(page);
@@ -182,10 +207,23 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
     await page.goto('/profile', { waitUntil: 'networkidle' });
     await expect(page.locator('#p-name')).toBeVisible();
 
-    // --- TAB 1: Basic Information ---
+    // --- TAB 1: Basic Information + Multi-Role Account Persona Selection ---
     await page
       .locator('#p-headline')
       .fill('BTech CSE @ IIT Bombay | Autonomous Robotics & Edge AI');
+
+    // Select additional Account Persona roles alongside Student (Researcher + Startup)
+    await page.getByRole('button', { name: 'Researcher', exact: true }).click();
+    await page.getByRole('button', { name: 'Startup', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Researcher', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.getByRole('button', { name: 'Startup', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
     await page.locator('#p-college').fill('IIT Bombay');
     await page.locator('#p-branch').fill('Computer Science & Engineering');
     await page.locator('#p-year').selectOption('4');
@@ -197,6 +235,11 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
       page.locator('form button[type="submit"]').click(),
     ]);
     expect(basicRes.status()).toBe(200);
+
+    // Verify all selected persona badges render in Profile Summary Header
+    await expect(page.locator('.profile-hero__title-row').getByText('Student')).toBeVisible();
+    await expect(page.locator('.profile-hero__title-row').getByText('Researcher')).toBeVisible();
+    await expect(page.locator('.profile-hero__title-row').getByText('Startup')).toBeVisible();
 
     // --- TAB 2: Education ---
     await page.getByRole('tab', { name: /Education/i }).click();
@@ -307,6 +350,17 @@ test.describe('Collab47 Student Dashboard E2E — Add Project & Complete Profile
 
     // Verify Profile Completeness hit 100%
     await expect(page.getByText('100%').first()).toBeVisible();
+
+    // --- TAB 6: Activity Badges & Achievements ---
+    await page.getByRole('tab', { name: /Badges/i }).click();
+    await expect(page.getByText('Activity Badges & Achievements')).toBeVisible();
+    await expect(page.getByText('Profile Architect')).toBeVisible();
+    await expect(page.getByText('Multi-Disciplinary')).toBeVisible();
+    await expect(page.getByText('All-Star Portfolio')).toBeVisible();
+
+    // Verify category filters work cleanly
+    await page.getByRole('button', { name: 'Profile', exact: true }).click();
+    await expect(page.getByText('Multi-Disciplinary')).toBeVisible();
 
     monitor.assertClean();
   });

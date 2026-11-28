@@ -7,6 +7,7 @@ import type {
   MembershipStatus,
   MembershipTier,
   PaymentGateway,
+  PaymentPurpose,
   PaymentStatus,
 } from './types';
 
@@ -45,6 +46,10 @@ export interface PaymentMethodDetails {
 
 export interface PaymentTransaction {
   id: string;
+  purpose: PaymentPurpose;
+  projectId: string | null;
+  projectTitle: string | null;
+  slotConsumedAt: string | null;
   gateway: PaymentGateway;
   gatewayOrderId: string;
   gatewayPaymentId: string | null;
@@ -60,13 +65,35 @@ export interface PaymentTransaction {
   createdAt: string;
 }
 
+export interface ProjectPostingQuota {
+  freeProjectLimit: number;
+  authoredProjectsCount: number;
+  freeProjectsUsed: number;
+  freeProjectsRemaining: number;
+  availablePaidSlots: number;
+  totalPaidSlotsPurchased: number;
+  pricePerProjectPaise: number;
+  pricePerProjectInr: number;
+  currency: string;
+  requiresPaymentForNextProject: boolean;
+  canCreateProjectNow: boolean;
+  nextProjectNumber: number;
+}
+
+export interface BillingSummaryResponse {
+  quota: ProjectPostingQuota;
+  recentPayments: PaymentTransaction[];
+}
+
 export interface CreatePaymentOrderResponse {
   transactionId: string;
+  purpose: PaymentPurpose;
   gateway: PaymentGateway;
   gatewayOrderId: string;
   gatewayKeyId: string | null;
-  planCode: MembershipPlanCode;
+  planCode?: MembershipPlanCode | null;
   planName: string;
+  itemDescription?: string;
   amountPaise: number;
   amountInr: number;
   currency: string;
@@ -91,7 +118,9 @@ export interface UserMembershipSummary {
 
 export interface VerifyPaymentResponse {
   verified: boolean;
-  membership: UserMembershipSummary;
+  purpose: PaymentPurpose;
+  membership?: UserMembershipSummary | null;
+  quota?: ProjectPostingQuota | null;
   transaction: PaymentTransaction;
 }
 
@@ -108,6 +137,30 @@ export const membershipApi = {
     return apiRequest<IndustryMasterItem[]>(`/membership/industries${qs ? `?${qs}` : ''}`, {
       method: 'GET',
       auth: false,
+    });
+  },
+
+  getBillingSummary(): Promise<BillingSummaryResponse> {
+    return apiRequest<BillingSummaryResponse>('/membership/billing', {
+      method: 'GET',
+      auth: true,
+    });
+  },
+
+  getProjectPostingQuota(): Promise<ProjectPostingQuota> {
+    return apiRequest<ProjectPostingQuota>('/membership/project-quota', {
+      method: 'GET',
+      auth: true,
+    });
+  },
+
+  createProjectPostOrder(payload?: {
+    preferredMethod?: IndianPaymentMethod;
+  }): Promise<CreatePaymentOrderResponse> {
+    return apiRequest<CreatePaymentOrderResponse>('/membership/payments/create-project-order', {
+      method: 'POST',
+      auth: true,
+      body: payload ?? {},
     });
   },
 

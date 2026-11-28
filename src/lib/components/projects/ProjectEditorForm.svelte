@@ -76,6 +76,7 @@
 
   interface PendingDraftMedia {
     localId: string;
+    savedMediaId?: string;
     kind: 'image' | 'video';
     url: string;
     title: string;
@@ -225,11 +226,32 @@
   let isSendingInvite = $state(false);
   let inviteError = $state('');
 
-  // Submit state
+  // Submit & draft state
+  let draftProjectId = $state<string | null>(null);
+  let isSavingDraft = $state(false);
+  let lastDraftSavedAt = $state<string | null>(null);
   let isSubmitting = $state(false);
   let formError = $state('');
 
-  const effectiveProjectId = $derived(mode === 'edit' ? (projectId ?? loadedProject?.id ?? null) : null);
+  const effectiveProjectId = $derived(
+    mode === 'edit' ? (projectId ?? loadedProject?.id ?? null) : draftProjectId,
+  );
+
+  function formatProjectApiError(err: unknown, fallback: string): string {
+    if (err instanceof ApiError) {
+      const fieldMessages = Object.entries(err.fieldErrors)
+        .map(([field, msg]) => `${field}: ${msg}`)
+        .filter(Boolean);
+      if (fieldMessages.length > 0) {
+        return `${err.message} (${fieldMessages.join('; ')})`;
+      }
+      return err.message || fallback;
+    }
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+    return fallback;
+  }
 
   const previewCoverMedia = $derived(
     draftMedia.find((m) => m.kind === 'image' && m.isCover) ?? draftMedia[0] ?? null,
@@ -720,12 +742,219 @@
     scrollEditorTop();
   }
 
+  function buildStructuredMilestonesForCreate() {
+    return milestones
+      .filter((m) => m.title.trim())
+      .map((m) => ({
+        title: m.title.trim().slice(0, 150),
+        description: m.description.trim().slice(0, 1000) || undefined,
+        startDate: m.startDate || undefined,
+        endDate: m.endDate || undefined,
+        status: m.status,
+      }));
+  }
+
+  function buildStructuredMilestonesForUpdate() {
+    return milestones
+      .filter((m) => m.title.trim())
+      .map((m) => ({
+        id: m.id,
+        title: m.title.trim().slice(0, 150),
+        description: m.description.trim().slice(0, 1000) || null,
+        startDate: m.startDate || null,
+        endDate: m.endDate || null,
+        status: m.status,
+      }));
+  }
+
+  function buildCreatePayload(targetIsDraft: boolean): CreateProjectPayload {
+    const cleanTitle = title.trim().slice(0, 150);
+    const cleanBrief = brief.trim().slice(0, 500);
+    const cleanSector = (sector.trim() || (targetIsDraft ? 'Other' : '')).slice(0, 50);
+
+    return {
+      title: cleanTitle,
+      brief: cleanBrief || undefined,
+      projectOverview: projectOverview.trim().slice(0, 500) || undefined,
+      description: description.trim().slice(0, 5000) || undefined,
+      problemStatement: problemStatement.trim().slice(0, 1000) || undefined,
+      expectedDeliverables: expectedDeliverables.trim().slice(0, 1000) || undefined,
+      sector: cleanSector || undefined,
+      sectorId: sectorId || undefined,
+      primaryStemCategory: (primaryStemCategory || undefined) as ProjectStemCategory | undefined,
+      primaryStemCategoryId: primaryStemCategoryId || undefined,
+      primaryStemDiscipline: primaryStemDiscipline.trim().slice(0, 150) || undefined,
+      primaryStemDisciplineId: primaryStemDisciplineId || undefined,
+      leadInstitutionId: leadInstitutionId || undefined,
+      leadOrganizationId: leadOrganizationId || undefined,
+      branch: branch.trim().slice(0, 150) || undefined,
+      projectTypes: selectedProjectTypes,
+      academicLevels: selectedAcademicLevels,
+      broadDomains: selectedBroadDomains,
+      keywords: parseCsv(keywordsInput),
+      skills: parseCsv(skillsInput),
+      tags: parseCsv(tagsInput),
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      actualCompletionDate: actualCompletionDate || undefined,
+      workbenchStatus,
+      status: workbenchStatus,
+      visibility,
+      isDraft: targetIsDraft,
+      confidentialityWarningAcknowledged,
+      isPinned,
+      deliverableUrl: deliverableUrl.trim().slice(0, 500) || undefined,
+      milestones: buildStructuredMilestonesForCreate(),
+      media: draftMedia.map((m) => ({
+        kind: m.kind,
+        url: m.url,
+        title: m.title.trim().slice(0, 200) || 'Project media',
+        mimeType: m.mimeType,
+        fileSizeBytes:
+          typeof m.fileSizeBytes === 'number' && Number.isFinite(m.fileSizeBytes)
+            ? Math.max(0, Math.round(m.fileSizeBytes))
+            : undefined,
+        isCover: m.isCover,
+      })),
+    };
+  }
+
+  function buildUpdatePayload(targetIsDraft: boolean): UpdateProjectPayload {
+    const cleanTitle = title.trim().slice(0, 150);
+    const cleanBrief = brief.trim().slice(0, 500);
+    const cleanSector = (sector.trim() || (targetIsDraft ? 'Other' : '')).slice(0, 50);
+
+    return {
+      title: cleanTitle,
+      brief: cleanBrief,
+      projectOverview: projectOverview.trim().slice(0, 500) || null,
+      description: description.trim().slice(0, 5000) || null,
+      problemStatement: problemStatement.trim().slice(0, 1000) || null,
+      expectedDeliverables: expectedDeliverables.trim().slice(0, 1000) || null,
+      sector: cleanSector,
+      sectorId: sectorId || null,
+      primaryStemCategory: (primaryStemCategory || null) as ProjectStemCategory | null,
+      primaryStemCategoryId: primaryStemCategoryId || null,
+      primaryStemDiscipline: primaryStemDiscipline.trim().slice(0, 150) || null,
+      primaryStemDisciplineId: primaryStemDisciplineId || null,
+      leadInstitutionId: leadInstitutionId || null,
+      leadOrganizationId: leadOrganizationId || null,
+      branch: branch.trim().slice(0, 150) || null,
+      projectTypes: selectedProjectTypes,
+      academicLevels: selectedAcademicLevels,
+      broadDomains: selectedBroadDomains,
+      keywords: parseCsv(keywordsInput),
+      skills: parseCsv(skillsInput),
+      tags: parseCsv(tagsInput),
+      startDate: startDate || null,
+      endDate: endDate || null,
+      actualCompletionDate: actualCompletionDate || null,
+      workbenchStatus,
+      status: workbenchStatus,
+      visibility,
+      isDraft: targetIsDraft,
+      confidentialityWarningAcknowledged,
+      isPinned,
+      deliverableUrl: deliverableUrl.trim().slice(0, 500) || null,
+      milestones: buildStructuredMilestonesForUpdate(),
+    };
+  }
+
+  async function syncUnsavedDraftMedia(targetId: string): Promise<void> {
+    const unsaved = draftMedia.filter((m) => !m.savedMediaId);
+    if (unsaved.length > 0) {
+      const payloadItems: CreateProjectMediaPayload[] = unsaved.map((m) => ({
+        kind: m.kind,
+        url: m.url,
+        title: m.title.trim().slice(0, 200) || 'Project media',
+        mimeType: m.mimeType,
+        fileSizeBytes:
+          typeof m.fileSizeBytes === 'number' && Number.isFinite(m.fileSizeBytes)
+            ? Math.max(0, Math.round(m.fileSizeBytes))
+            : undefined,
+        isCover: m.isCover,
+      }));
+      const savedList = await projectsApi.addMedia(targetId, payloadItems);
+      let savedCursor = 0;
+      draftMedia = draftMedia.map((m) => {
+        if (m.savedMediaId) return m;
+        const saved = savedList[savedCursor];
+        savedCursor += 1;
+        return saved ? { ...m, savedMediaId: saved.id } : m;
+      });
+    }
+
+    const desiredCover = draftMedia.find((m) => m.kind === 'image' && m.isCover && m.savedMediaId);
+    if (desiredCover?.savedMediaId) {
+      await projectsApi.setCoverMedia(targetId, desiredCover.savedMediaId).catch(() => undefined);
+    }
+  }
+
+  async function saveProjectDraft(): Promise<void> {
+    formError = '';
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      formError = 'Enter a Project Title before saving a draft.';
+      if (mode === 'create') createStep = 1;
+      return;
+    }
+    const dateErr = validateDates();
+    if (dateErr) {
+      formError = dateErr;
+      if (mode === 'create') createStep = 3;
+      return;
+    }
+
+    isSavingDraft = true;
+    try {
+      if (mode === 'create') {
+        if (!draftProjectId) {
+          const created = await createUserProject(buildCreatePayload(true));
+          draftProjectId = created.id;
+          // Map returned DB media IDs back to draftMedia so subsequent saves never duplicate uploads
+          if (created.media && created.media.length > 0) {
+            draftMedia = draftMedia.map((m, idx) => ({
+              ...m,
+              savedMediaId: created.media[idx]?.id ?? m.savedMediaId,
+            }));
+          }
+        } else {
+          await syncUnsavedDraftMedia(draftProjectId);
+          await updateUserProject(draftProjectId, buildUpdatePayload(true));
+        }
+      } else if (effectiveProjectId) {
+        const updated = await updateUserProject(effectiveProjectId, buildUpdatePayload(true));
+        populateFromProject(updated, options);
+      }
+
+      isDraft = true;
+      lastDraftSavedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      pushToast({
+        tone: 'success',
+        title: 'Draft saved!',
+        message: `"${cleanTitle}" has been saved as a draft. You can continue or publish on Step 6.`,
+      });
+    } catch (err) {
+      formError = formatProjectApiError(
+        err,
+        'Unable to save project draft right now. Please check your inputs and try again.',
+      );
+      pushToast({
+        tone: 'error',
+        title: 'Draft save failed',
+        message: formError,
+      });
+    } finally {
+      isSavingDraft = false;
+    }
+  }
+
   async function publishCreateProject(): Promise<void> {
     formError = '';
     const cleanTitle = title.trim();
     const cleanBrief = brief.trim();
     if (!cleanTitle || !cleanBrief || !sector.trim()) {
-      formError = 'Project Title, Sector, and Short Project Brief are required.';
+      formError = 'Project Title, Sector, and Short Project Brief are required to publish.';
       createStep = 1;
       return;
     }
@@ -744,69 +973,28 @@
 
     isSubmitting = true;
     try {
-      const tags = parseCsv(tagsInput);
-      const keywords = parseCsv(keywordsInput);
-      const skills = parseCsv(skillsInput);
-      const structuredMilestones = milestones
-        .filter((m) => m.title.trim())
-        .map((m) => ({
-          title: m.title.trim(),
-          description: m.description.trim() || undefined,
-          startDate: m.startDate || undefined,
-          endDate: m.endDate || undefined,
-          status: m.status,
-        }));
+      let publishedId: string;
+      let publishedTitle: string;
 
-      const payload: CreateProjectPayload = {
-        title: cleanTitle,
-        brief: cleanBrief,
-        projectOverview: projectOverview.trim() || undefined,
-        description: description.trim() || undefined,
-        problemStatement: problemStatement.trim() || undefined,
-        expectedDeliverables: expectedDeliverables.trim() || undefined,
-        sector: sector.trim(),
-        sectorId: sectorId || undefined,
-        primaryStemCategory: (primaryStemCategory || undefined) as ProjectStemCategory | undefined,
-        primaryStemCategoryId: primaryStemCategoryId || undefined,
-        primaryStemDiscipline: primaryStemDiscipline.trim() || undefined,
-        primaryStemDisciplineId: primaryStemDisciplineId || undefined,
-        leadInstitutionId: leadInstitutionId || undefined,
-        leadOrganizationId: leadOrganizationId || undefined,
-        branch: branch.trim() || undefined,
-        projectTypes: selectedProjectTypes,
-        academicLevels: selectedAcademicLevels,
-        broadDomains: selectedBroadDomains,
-        keywords,
-        skills,
-        tags,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        actualCompletionDate: actualCompletionDate || undefined,
-        workbenchStatus,
-        status: workbenchStatus,
-        visibility,
-        isDraft,
-        confidentialityWarningAcknowledged,
-        isPinned,
-        deliverableUrl: deliverableUrl.trim() || undefined,
-        milestones: structuredMilestones,
-        media: draftMedia.map((m) => ({
-          kind: m.kind,
-          url: m.url,
-          title: m.title,
-          mimeType: m.mimeType,
-          fileSizeBytes: m.fileSizeBytes,
-          isCover: m.isCover,
-        })),
-      };
+      if (draftProjectId) {
+        // Sync any newly added media & transition the saved draft to published (isDraft: false)
+        await syncUnsavedDraftMedia(draftProjectId);
+        const published = await updateUserProject(draftProjectId, buildUpdatePayload(false));
+        publishedId = published.id;
+        publishedTitle = published.title;
+      } else {
+        const created = await createUserProject(buildCreatePayload(false));
+        publishedId = created.id;
+        publishedTitle = created.title;
+      }
 
-      const created = await createUserProject(payload);
+      isDraft = false;
 
       // Dispatch any contributor invitations queued in Step 5
       let invitedOk = 0;
       for (const inv of queuedInvites) {
         try {
-          await inviteContributorToProject(created.id, {
+          await inviteContributorToProject(publishedId, {
             email: inv.email,
             roleTitle: inv.roleTitle,
             teamRole: inv.teamRole,
@@ -820,18 +1008,74 @@
 
       pushToast({
         tone: 'success',
-        title: isDraft ? 'Project draft saved!' : 'Project published!',
+        title: 'Project published!',
         message:
           invitedOk > 0
-            ? `"${created.title}" is live and ${invitedOk} contributor invitation${invitedOk > 1 ? 's were' : ' was'} sent.`
-            : `"${created.title}" is now live on Collab47.`,
+            ? `"${publishedTitle}" is live and ${invitedOk} contributor invitation${invitedOk > 1 ? 's were' : ' was'} sent.`
+            : `"${publishedTitle}" is now live on Collab47.`,
       });
-      await goto(`/projects/${created.id}`);
+      await goto(`/projects/${publishedId}`);
     } catch (err) {
-      formError =
-        err instanceof ApiError
-          ? err.message
-          : 'Unable to publish project right now. Please check all fields and try again.';
+      formError = formatProjectApiError(
+        err,
+        'Unable to publish project right now. Please check all fields and try again.',
+      );
+      pushToast({
+        tone: 'error',
+        title: 'Publish failed',
+        message: formError,
+      });
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  async function saveEditProject(targetIsDraft: boolean): Promise<void> {
+    formError = '';
+    const cleanTitle = title.trim();
+    const cleanBrief = brief.trim();
+    if (!cleanTitle) {
+      formError = 'Project Title is required.';
+      return;
+    }
+    if (!targetIsDraft && !cleanBrief) {
+      formError = 'Short Project Brief is required to publish.';
+      return;
+    }
+    if (!targetIsDraft && !hasSelectedCoverImage) {
+      formError = 'A cover image is required to publish. Open the Media tab and upload an image first.';
+      return;
+    }
+
+    const dateErr = validateDates();
+    if (dateErr) {
+      formError = dateErr;
+      return;
+    }
+
+    if (!effectiveProjectId) return;
+
+    isSubmitting = true;
+    try {
+      const updated = await updateUserProject(effectiveProjectId, buildUpdatePayload(targetIsDraft));
+      populateFromProject(updated, options);
+      pushToast({
+        tone: 'success',
+        title: targetIsDraft ? 'Draft saved' : 'Project published & updated!',
+        message: targetIsDraft
+          ? `"${updated.title}" draft changes saved.`
+          : `"${updated.title}" is now live on Collab47.`,
+      });
+    } catch (err) {
+      formError = formatProjectApiError(
+        err,
+        'Unable to save project right now. Please check all fields and try again.',
+      );
+      pushToast({
+        tone: 'error',
+        title: targetIsDraft ? 'Draft save failed' : 'Save failed',
+        message: formError,
+      });
     } finally {
       isSubmitting = false;
     }
@@ -851,87 +1095,7 @@
       return;
     }
 
-    const cleanTitle = title.trim();
-    const cleanBrief = brief.trim();
-    if (!cleanTitle || !cleanBrief) {
-      formError = 'Project Title and Short Project Brief are required.';
-      return;
-    }
-
-    const dateErr = validateDates();
-    if (dateErr) {
-      formError = dateErr;
-      return;
-    }
-
-    if (!effectiveProjectId) return;
-
-    isSubmitting = true;
-    try {
-      const tags = parseCsv(tagsInput);
-      const keywords = parseCsv(keywordsInput);
-      const skills = parseCsv(skillsInput);
-      const structuredMilestones = milestones
-        .filter((m) => m.title.trim())
-        .map((m) => ({
-          id: m.id,
-          title: m.title.trim(),
-          description: m.description.trim() || null,
-          startDate: m.startDate || null,
-          endDate: m.endDate || null,
-          status: m.status,
-        }));
-
-      const payload: UpdateProjectPayload = {
-        title: cleanTitle,
-        brief: cleanBrief,
-        projectOverview: projectOverview.trim() || null,
-        description: description.trim() || null,
-        problemStatement: problemStatement.trim() || null,
-        expectedDeliverables: expectedDeliverables.trim() || null,
-        sector: sector.trim(),
-        sectorId: sectorId || null,
-        primaryStemCategory: (primaryStemCategory || null) as ProjectStemCategory | null,
-        primaryStemCategoryId: primaryStemCategoryId || null,
-        primaryStemDiscipline: primaryStemDiscipline.trim() || null,
-        primaryStemDisciplineId: primaryStemDisciplineId || null,
-        leadInstitutionId: leadInstitutionId || null,
-        leadOrganizationId: leadOrganizationId || null,
-        branch: branch.trim() || null,
-        projectTypes: selectedProjectTypes,
-        academicLevels: selectedAcademicLevels,
-        broadDomains: selectedBroadDomains,
-        keywords,
-        skills,
-        tags,
-        startDate: startDate || null,
-        endDate: endDate || null,
-        actualCompletionDate: actualCompletionDate || null,
-        workbenchStatus,
-        status: workbenchStatus,
-        visibility,
-        isDraft,
-        confidentialityWarningAcknowledged,
-        isPinned,
-        deliverableUrl: deliverableUrl.trim() || null,
-        milestones: structuredMilestones,
-      };
-
-      const updated = await updateUserProject(effectiveProjectId, payload);
-      populateFromProject(updated, options);
-      pushToast({
-        tone: 'success',
-        title: 'Project updated',
-        message: `"${updated.title}" changes and milestones saved successfully.`,
-      });
-    } catch (err) {
-      formError =
-        err instanceof ApiError
-          ? err.message
-          : 'Unable to save project right now. Please check all fields and try again.';
-    } finally {
-      isSubmitting = false;
-    }
+    await saveEditProject(isDraft);
   }
 
   async function handleInviteContributor(event: SubmitEvent): Promise<void> {
@@ -999,9 +1163,19 @@
             {loadedProject.title} · <span class="font-mono text-[11px]">{loadedProject.shortId}</span>
           </p>
         {:else if mode === 'create'}
-          <p class="text-xs font-medium text-slate-500">
-            Step {createStep} of 6 · {activeCreateStepMeta.subtitle}
-          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="text-xs font-medium text-slate-500">
+              Step {createStep} of 6 · {activeCreateStepMeta.subtitle}
+            </p>
+            {#if draftProjectId && lastDraftSavedAt}
+              <span
+                class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700"
+              >
+                <Icon name="check-circle" size={11} />
+                <span>Draft saved · {lastDraftSavedAt}</span>
+              </span>
+            {/if}
+          </div>
         {/if}
       </div>
     </div>
@@ -1206,15 +1380,34 @@
         </div>
       {/if}
 
+      {#if formError}
+        <div class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
+          <Icon name="alert-circle" size={16} class="shrink-0" />
+          <span>{formError}</span>
+        </div>
+      {/if}
+
       <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <Button type="button" variant="outline" size="sm" onclick={goToPrevCreateStep}>
           <Icon name="arrow-left" size={14} />
           <span>Back to Step 4</span>
         </Button>
-        <Button type="button" variant="primary" size="md" onclick={goToNextCreateStep}>
-          <span>Next: Step 6 (Preview & Publish)</span>
-          <Icon name="arrow-right" size={15} />
-        </Button>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            loading={isSavingDraft}
+            onclick={() => void saveProjectDraft()}
+          >
+            <Icon name="save" size={15} />
+            <span>Save Draft</span>
+          </Button>
+          <Button type="button" variant="primary" size="md" onclick={goToNextCreateStep}>
+            <span>Next: Step 6 (Preview & Publish)</span>
+            <Icon name="arrow-right" size={15} />
+          </Button>
+        </div>
       </div>
     </div>
   {:else if mode === 'create' && createStep === 6}
@@ -1489,17 +1682,31 @@
           <span>Back to Step 5</span>
         </Button>
 
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          loading={isSubmitting}
-          disabled={!hasSelectedCoverImage}
-          onclick={() => void publishCreateProject()}
-        >
-          <Icon name="rocket" size={16} />
-          <span>{isDraft ? 'Save Project Draft' : 'Publish Project Now'}</span>
-        </Button>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            loading={isSavingDraft}
+            disabled={isSubmitting}
+            onclick={() => void saveProjectDraft()}
+          >
+            <Icon name="save" size={15} />
+            <span>Save Draft</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            loading={isSubmitting}
+            disabled={!hasSelectedCoverImage || isSavingDraft}
+            onclick={() => void publishCreateProject()}
+          >
+            <Icon name="rocket" size={16} />
+            <span>Publish Project</span>
+          </Button>
+        </div>
       </div>
     </div>
   {:else}
@@ -2027,10 +2234,12 @@
           </div>
 
           <div class="flex flex-col gap-2.5 rounded-xl border border-[#ECEAF9] bg-[#FAF9FF] p-3.5">
-            <label class="flex cursor-pointer items-center gap-2.5 text-xs font-semibold text-[#1E1B4B]">
-              <input type="checkbox" bind:checked={isDraft} class="h-4 w-4 rounded border-slate-300 accent-[#6D4AFF]" />
-              <span>{$t.forms.saveAsDraft}</span>
-            </label>
+            {#if mode === 'edit'}
+              <label class="flex cursor-pointer items-center gap-2.5 text-xs font-semibold text-[#1E1B4B]">
+                <input type="checkbox" bind:checked={isDraft} class="h-4 w-4 rounded border-slate-300 accent-[#6D4AFF]" />
+                <span>{$t.forms.saveAsDraft}</span>
+              </label>
+            {/if}
             <label class="flex cursor-pointer items-center gap-2.5 text-xs font-semibold text-[#1E1B4B]">
               <input type="checkbox" bind:checked={isPinned} class="h-4 w-4 rounded border-slate-300 accent-[#6D4AFF]" />
               <span>{$t.forms.pinProject}</span>
@@ -2175,6 +2384,19 @@
           {/if}
 
           <div class="flex flex-wrap items-center gap-2.5">
+            {#if mode === 'create'}
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                loading={isSavingDraft}
+                onclick={() => void saveProjectDraft()}
+              >
+                <Icon name="save" size={15} />
+                <span>Save Draft</span>
+              </Button>
+            {/if}
+
             {#if mode === 'create' && createStep < 4}
               <Button type="button" variant="primary" size="md" onclick={goToNextCreateStep}>
                 <span>
@@ -2197,6 +2419,29 @@
               >
                 <span>Next: Step 5 (Add Contributors)</span>
                 <Icon name="arrow-right" size={15} />
+              </Button>
+            {:else if loadedProject?.isDraft}
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                loading={isSavingDraft}
+                disabled={isSubmitting}
+                onclick={() => void saveProjectDraft()}
+              >
+                <Icon name="save" size={15} />
+                <span>Save Draft</span>
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                loading={isSubmitting}
+                disabled={isSavingDraft}
+                onclick={() => void saveEditProject(false)}
+              >
+                <Icon name="rocket" size={15} />
+                <span>Publish Project</span>
               </Button>
             {:else}
               <Button type="submit" variant="primary" size="md" loading={isSubmitting}>

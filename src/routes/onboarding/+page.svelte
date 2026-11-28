@@ -31,7 +31,7 @@
   } from '$ui';
 
   let step = $state(1);
-  let accountType = $state<AccountType>('student');
+  let accountTypes = $state<string[]>(['student']);
   let selectedOccupations = $state<string[]>([]);
   let occupationOther = $state('');
   let college = $state('');
@@ -98,7 +98,23 @@
 
     const [profile] = await Promise.all([loadMyProfile(), loadProfileOptions()]);
     if (profile) {
-      accountType = profile.accountType;
+      const publicRoleCodes = new Set([
+        'student',
+        'researcher',
+        'scientist',
+        'faculty',
+        'industry',
+        'startup',
+        'government',
+        'others',
+      ]);
+      const assigned = (profile.roles ?? [])
+        .map((r) => r.roleCode)
+        .filter((code) => publicRoleCodes.has(code));
+      accountTypes =
+        assigned.length > 0
+          ? Array.from(new Set(assigned))
+          : [publicRoleCodes.has(profile.accountType) ? profile.accountType : 'student'];
       selectedOccupations = [...profile.occupations];
       occupationOther = profile.occupationOther ?? '';
       college = profile.college ?? '';
@@ -165,8 +181,12 @@
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const selectedRoles = (accountTypes.length > 0 ? accountTypes : ['student']) as AccountType[];
+      const primaryAccountType = selectedRoles[0] ?? 'student';
+
       const updated = await profileApi.completeOnboarding({
-        accountType,
+        accountType: primaryAccountType,
+        accountTypes: selectedRoles,
         occupations:
           selectedOccupations.length > 0 ? (selectedOccupations as OccupationCode[]) : undefined,
         occupationOther: selectedOccupations.includes('other') ? occupationOther.trim() : undefined,
@@ -196,7 +216,7 @@
         title: 'Onboarding complete!',
         message: 'Your Collab47 profile has been initialized.',
       });
-      await goto(getDashboardPath(updated.accountType ?? accountType));
+      await goto(getDashboardPath(updated.accountType ?? primaryAccountType));
     } catch (err) {
       errorMessage = err instanceof ApiError ? err.message : 'Failed to save onboarding details.';
     } finally {
@@ -232,12 +252,12 @@
         {#if step === 1}
           <div class="step-body">
             <h2>{$t.onboarding.step1Title}</h2>
-            <Select
-              id="onb-account-type"
-              label={$t.forms.primaryAccountType}
+            <ChipGroup
+              label={$t.forms.accountPersona}
+              hint="Select one or more roles. First selected role becomes your primary workspace."
               options={accountTypeOptions}
-              bind:value={accountType}
-              required
+              bind:selected={accountTypes}
+              max={8}
             />
 
             {#if occupationOptions.length > 0}

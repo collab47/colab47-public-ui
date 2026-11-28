@@ -3,6 +3,7 @@
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { ApiError, ensureFreshSession } from '$lib/api/client';
+  import { badgesApi, type UserBadgesSummary } from '$lib/api/badges.api';
   import type { FeedFilterTab } from '$lib/api/dashboard.api';
   import type { AccountType } from '$lib/api/types';
   import { uploadsApi, type UploadFolder } from '$lib/api/uploads.api';
@@ -61,6 +62,7 @@
   import {
     Avatar,
     Badge,
+    BadgesShowcase,
     Button,
     Card,
     Footer,
@@ -101,6 +103,7 @@
   let invitingProjectId = $state<string | null>(null);
   let isPublishingPost = $state(false);
   let respondingInviteId = $state<string | null>(null);
+  let myBadges = $state<UserBadgesSummary | null>(null);
   let lastNewProjectTrigger = $state(sidebarState.get().newProjectTrigger);
 
   $effect(() => {
@@ -398,6 +401,12 @@
       loadDashboardWorkspace(),
       loadDashboardFeed({ tab: 'for_you', bookmarkedOnly: false }),
       detectUserLocation(),
+      badgesApi
+        .getMyBadges()
+        .then((b) => {
+          myBadges = b;
+        })
+        .catch(() => null),
     ]);
   });
 
@@ -2352,7 +2361,26 @@
             {/if}
           </section>
 
-          <!-- 4. Google Display Ads (Strictly Free Members Only — Hidden for Premium) -->
+          <!-- 3b. Activity Badges & Achievements -->
+          {#if myBadges}
+            <section class="rounded-2xl border border-[#E8EAF6] bg-white p-4 shadow-[0_2px_10px_rgba(30,27,75,0.04)]">
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="flex items-center gap-1.5 text-sm font-extrabold text-[#1E1B4B]">
+                  <Icon name="award" size={15} class="text-amber-500" />
+                  <span>Badges &amp; Level</span>
+                </h2>
+                <a
+                  href="/profile?tab=badges"
+                  class="text-xs font-bold text-[#6D4AFF] no-underline hover:underline"
+                >
+                  View All
+                </a>
+              </div>
+              <BadgesShowcase summary={myBadges} compact />
+            </section>
+          {/if}
+
+          <!-- 4. Google Display Ads -->
           {#if $shouldShowAds}
             <GoogleAdSlot
               slot="dashboard-right-top"

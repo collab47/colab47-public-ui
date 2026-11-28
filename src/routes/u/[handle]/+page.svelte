@@ -1,12 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { ApiError } from '$lib/api/client';
+  import { badgesApi, type UserBadgesSummary } from '$lib/api/badges.api';
   import { profileApi } from '$lib/api/profile.api';
   import type { FullProfile } from '$lib/api/types';
   import { t } from '$lib/stores';
-  import { Alert, Avatar, Badge, Button, Card, Footer, Spinner } from '$ui';
+  import { Alert, Avatar, Badge, BadgesShowcase, Button, Card, Footer, Spinner } from '$ui';
 
   let profile = $state<FullProfile | null>(null);
+  let publicBadges = $state<UserBadgesSummary | null>(null);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -15,14 +17,18 @@
     if (!handle) return;
     loading = true;
     error = null;
-    profileApi
-      .getPublicProfile(handle)
-      .then((data) => {
+    Promise.all([
+      profileApi.getPublicProfile(handle),
+      badgesApi.getPublicBadgesByHandle(handle).catch(() => null),
+    ])
+      .then(([data, badges]) => {
         profile = data;
+        publicBadges = badges;
       })
       .catch((err) => {
         error = err instanceof ApiError ? err.message : 'Unable to load public profile.';
         profile = null;
+        publicBadges = null;
       })
       .finally(() => {
         loading = false;
@@ -52,7 +58,15 @@
           <div class="hero-card__meta">
             <div class="hero-card__top">
               <h1>{profile.name}</h1>
-              <Badge tone="saffron">{profile.accountType}</Badge>
+              {#if profile.roles && profile.roles.length > 0}
+                {#each profile.roles as role (role.roleId)}
+                  <Badge tone={role.isPrimary ? 'saffron' : 'neutral'}>
+                    {role.badgeLabel ?? role.roleName}
+                  </Badge>
+                {/each}
+              {:else}
+                <Badge tone="saffron">{profile.accountType}</Badge>
+              {/if}
               {#if profile.openToCollaborations}
                 <Badge tone="moss">{$t.portfolio.openToCollabs}</Badge>
               {/if}
@@ -67,6 +81,12 @@
           </div>
         </div>
       </Card>
+
+      {#if publicBadges && publicBadges.earnedCount > 0}
+        <Card title="Badges &amp; Achievements" subtitle="Level {publicBadges.level} · {publicBadges.levelTitle} ({publicBadges.totalPoints} pts)">
+          <BadgesShowcase summary={publicBadges} publicOnly />
+        </Card>
+      {/if}
 
       {#if profile.bio || profile.professionalSummary}
         <Card title={$t.portfolio.about}>

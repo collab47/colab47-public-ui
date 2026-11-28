@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { ApiError, ensureFreshSession } from '$lib/api/client';
+  import { badgesApi, type UserBadgesSummary } from '$lib/api/badges.api';
   import { profileApi } from '$lib/api/profile.api';
   import { uploadsApi } from '$lib/api/uploads.api';
   import type {
@@ -35,6 +36,7 @@
     Alert,
     Avatar,
     Badge,
+    BadgesShowcase,
     Button,
     Card,
     Checkbox,
@@ -53,12 +55,14 @@
   let activeTab = $state('basic');
   let savingSection = $state<string | null>(null);
   let sectionError = $state<string | null>(null);
+  let badgesSummary = $state<UserBadgesSummary | null>(null);
+  let loadingBadges = $state(false);
 
   // Section 1: Basic Info state
   let name = $state('');
   let handle = $state('');
   let headline = $state('');
-  let accountType = $state<AccountType>('student');
+  let accountTypes = $state<string[]>(['student']);
   let occupations = $state<string[]>([]);
   let occupationOther = $state('');
   let college = $state('');
@@ -251,13 +255,36 @@
       count: $profileState.profile?.skills.length ?? 0,
     },
     { id: 'about', label: $t.profile.tabAbout, icon: 'file-text' },
+    {
+      id: 'badges',
+      label: 'Badges',
+      icon: 'award',
+      count: badgesSummary?.earnedCount ?? 0,
+    },
+  ]);
+
+  const PUBLIC_ROLE_CODES = new Set<string>([
+    'student',
+    'researcher',
+    'scientist',
+    'faculty',
+    'industry',
+    'startup',
+    'government',
+    'others',
   ]);
 
   function hydrateFormsFromProfile(p: FullProfile): void {
     name = p.name;
     handle = p.handle;
     headline = p.headline ?? '';
-    accountType = p.accountType;
+    const assignedPublicRoles = (p.roles ?? [])
+      .map((r) => r.roleCode)
+      .filter((code) => PUBLIC_ROLE_CODES.has(code));
+    accountTypes =
+      assignedPublicRoles.length > 0
+        ? Array.from(new Set(assignedPublicRoles))
+        : [PUBLIC_ROLE_CODES.has(p.accountType) ? p.accountType : 'student'];
     occupations = [...p.occupations];
     occupationOther = p.occupationOther ?? '';
     college = p.college ?? '';
@@ -280,7 +307,28 @@
     professionalSummary = p.professionalSummary ?? '';
   }
 
-  const VALID_PROFILE_TABS = new Set(['basic', 'education', 'experience', 'expertise', 'about']);
+  const VALID_PROFILE_TABS = new Set(['basic', 'education', 'experience', 'expertise', 'about', 'badges']);
+
+  async function refreshBadges(showUnlockedToasts = false): Promise<void> {
+    loadingBadges = true;
+    try {
+      const next = await badgesApi.getMyBadges();
+      badgesSummary = next;
+      if (showUnlockedToasts && next.newlyAwarded.length > 0) {
+        for (const unlocked of next.newlyAwarded) {
+          pushToast({
+            tone: 'success',
+            title: `Badge Unlocked: ${unlocked.name}!`,
+            message: `+${unlocked.points} pts · ${unlocked.description}`,
+          });
+        }
+      }
+    } catch {
+      // Non-blocking badge fetch
+    } finally {
+      loadingBadges = false;
+    }
+  }
 
   $effect(() => {
     const tabParam = $page.url.searchParams.get('tab');
@@ -296,7 +344,7 @@
       return;
     }
 
-    const [profile] = await Promise.all([loadMyProfile(), loadProfileOptions()]);
+    const [profile] = await Promise.all([loadMyProfile(), loadProfileOptions(), refreshBadges(false)]);
     if (profile) {
       hydrateFormsFromProfile(profile);
     }
@@ -305,13 +353,20 @@
   async function saveBasicInfo(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     sectionError = null;
+    if (accountTypes.length === 0) {
+      sectionError = 'Please select at least one account persona role.';
+      return;
+    }
     savingSection = 'basic';
     try {
+      const selectedRoles = accountTypes as AccountType[];
+      const primaryAccountType = selectedRoles[0] ?? 'student';
       const updated = await profileApi.updateBasicInfo({
         name: name.trim(),
         handle: handle.trim().toLowerCase(),
         headline: headline.trim() || null,
-        accountType,
+        accountType: primaryAccountType,
+        accountTypes: selectedRoles,
         occupations: occupations as OccupationCode[],
         occupationOther: occupations.includes('other') ? occupationOther.trim() : null,
         college: college.trim() || null,
@@ -339,6 +394,7 @@
       });
       hydrateFormsFromProfile(updated);
       pushToast({ tone: 'success', title: 'Basic info saved' });
+      void refreshBadges(true);
     } catch (err) {
       sectionError = err instanceof ApiError ? err.message : 'Failed to update basic information.';
     } finally {
@@ -511,6 +567,7 @@
       });
       setProfile(updated);
       pushToast({ tone: 'success', title: 'About section saved' });
+      void refreshBadges(true);
     } catch (err) {
       sectionError = err instanceof ApiError ? err.message : 'Failed to update about section.';
     } finally {
@@ -583,9 +640,22 @@
             <div>
               <div class="profile-hero__title-row">
                 <h1>{profile.name}</h1>
-                <Badge tone="saffron">{profile.accountType}</Badge>
+                {#if profile.roles && profile.roles.length > 0}
+                  {#each profile.roles as role (role.roleId)}
+                    <Badge tone={role.isPrimary ? 'saffron' : 'neutral'}>
+                      {role.badgeLabel ?? role.roleName}
+                    </Badge>
+                  {/each}
+                {:else}
+                  <Badge tone="saffron">{profile.accountType}</Badge>
+                {/if}
                 {#if profile.openToCollaborations}
                   <Badge tone="moss">Open to Collaborations</Badge>
+                {/if}
+                {#if badgesSummary}
+                  <Badge tone="ink">
+                    Lvl {badgesSummary.level} · {badgesSummary.earnedCount}/{badgesSummary.totalBadges} Badges
+                  </Badge>
                 {/if}
               </div>
               <p class="muted">@{profile.handle} · {profile.email}</p>
@@ -642,20 +712,20 @@
               maxlength={120}
             />
 
-            <div class="two-col">
-              <Select
-                id="p-account-type"
-                label={$t.forms.accountPersona}
-                options={accountTypeOptions}
-                bind:value={accountType}
-              />
-              <Select
-                id="p-visibility"
-                label={$t.forms.profileVisibility}
-                options={visibilityOptions}
-                bind:value={visibility}
-              />
-            </div>
+            <ChipGroup
+              label={$t.forms.accountPersona}
+              hint="Select one or more roles. The first selected role is your primary persona."
+              options={accountTypeOptions}
+              bind:selected={accountTypes}
+              max={8}
+            />
+
+            <Select
+              id="p-visibility"
+              label={$t.forms.profileVisibility}
+              options={visibilityOptions}
+              bind:value={visibility}
+            />
 
             {#if occupationOptions.length > 0}
               <ChipGroup
@@ -1122,6 +1192,23 @@
             </form>
           </Card>
         </div>
+
+      <!-- TAB 6: ACTIVITY BADGES & ACHIEVEMENTS -->
+      {:else if activeTab === 'badges'}
+        <Card
+          title="Activity Badges &amp; Achievements"
+          subtitle="Earn badges automatically as you upload images &amp; videos, publish posts, engage with feeds, launch projects, and complete your profile."
+        >
+          {#if loadingBadges && !badgesSummary}
+            <div class="flex justify-center py-8">
+              <Spinner label="Evaluating your activity badges..." size="md" />
+            </div>
+          {:else if badgesSummary}
+            <BadgesShowcase summary={badgesSummary} />
+          {:else}
+            <p class="text-sm text-slate-500">Unable to load badges right now. Please refresh.</p>
+          {/if}
+        </Card>
       {/if}
     </div>
   {/if}

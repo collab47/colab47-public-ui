@@ -5,7 +5,6 @@
   import { authApi } from '$lib/api/auth.api';
   import { ApiError, getApiBaseUrl } from '$lib/api/client';
   import { projectsApi, type PublicInvitationPreview } from '$lib/api/projects.api';
-  import type { AccountType, PublicRoleCode, PublicRoleOption } from '$lib/api/types';
   import { pushToast, setAuthSession, t } from '$lib/stores';
   import {
     normalizeMobileCountryCode,
@@ -27,11 +26,9 @@
     Input,
     PasswordInput,
     SocialLoginButton,
-    type IconName,
   } from '$ui';
 
   type SignupField =
-    | 'accountType'
     | 'name'
     | 'email'
     | 'mobileCountryCode'
@@ -39,97 +36,6 @@
     | 'password'
     | 'confirmPassword';
 
-  const FALLBACK_PUBLIC_ROLES: PublicRoleOption[] = [
-    {
-      id: 'pub-student',
-      roleCode: 'student',
-      roleName: 'Student',
-      roleCategory: 'public',
-      roleDescription: 'UG/PG student building projects & proof of work.',
-      badgeLabel: 'Student',
-      hierarchyLevel: 1,
-    },
-    {
-      id: 'pub-researcher',
-      roleCode: 'researcher',
-      roleName: 'Researcher',
-      roleCategory: 'public',
-      roleDescription: 'PhD scholar, fellow & open lab researcher.',
-      badgeLabel: 'Researcher',
-      hierarchyLevel: 2,
-    },
-    {
-      id: 'pub-scientist',
-      roleCode: 'scientist',
-      roleName: 'Scientist',
-      roleCategory: 'public',
-      roleDescription: 'Applied scientist & R&D specialist.',
-      badgeLabel: 'Scientist',
-      hierarchyLevel: 3,
-    },
-    {
-      id: 'pub-faculty',
-      roleCode: 'faculty',
-      roleName: 'Faculty',
-      roleCategory: 'public',
-      roleDescription: 'Professor, academic faculty & principal investigator.',
-      badgeLabel: 'Faculty',
-      hierarchyLevel: 4,
-    },
-    {
-      id: 'pub-industry',
-      roleCode: 'industry',
-      roleName: 'Industry',
-      roleCategory: 'public',
-      roleDescription: 'Industry R&D partner, engineer & technical recruiter.',
-      badgeLabel: 'Industry',
-      hierarchyLevel: 5,
-    },
-    {
-      id: 'pub-startup',
-      roleCode: 'startup',
-      roleName: 'Startup',
-      roleCategory: 'public',
-      roleDescription: 'Startup founder, deep-tech builder & innovation team.',
-      badgeLabel: 'Startup',
-      hierarchyLevel: 6,
-    },
-    {
-      id: 'pub-government',
-      roleCode: 'government',
-      roleName: 'Government',
-      roleCategory: 'public',
-      roleDescription: 'Government agency, national lab & public mission steward.',
-      badgeLabel: 'Government',
-      hierarchyLevel: 7,
-    },
-    {
-      id: 'pub-others',
-      roleCode: 'others',
-      roleName: 'Others',
-      roleCategory: 'public',
-      roleDescription: 'Independent innovator, mentor & ecosystem contributor.',
-      badgeLabel: 'Others',
-      hierarchyLevel: 8,
-    },
-  ];
-
-  const ROLE_ICON_MAP: Record<AccountType, IconName> = {
-    student: 'graduation-cap',
-    researcher: 'flask',
-    scientist: 'cpu',
-    faculty: 'landmark',
-    industry: 'briefcase',
-    startup: 'rocket',
-    government: 'building',
-    others: 'sparkles',
-    institution: 'building',
-    mentor: 'award',
-  };
-
-  let publicRoles = $state<PublicRoleOption[]>(FALLBACK_PUBLIC_ROLES);
-  let loadingRoles = $state(true);
-  let accountType = $state<PublicRoleCode>('student');
   let name = $state('');
   let email = $state('');
   let mobileCountryCode = $state('+91');
@@ -142,7 +48,6 @@
   let invitePreview = $state<PublicInvitationPreview | null>(null);
   let fieldErrors = $state<Partial<Record<SignupField, string>>>({});
   let touched = $state<Record<SignupField, boolean>>({
-    accountType: false,
     name: false,
     email: false,
     mobileCountryCode: false,
@@ -165,31 +70,12 @@
         // Ignore invalid/expired invite token preview
       }
     }
-
-    try {
-      const response = await authApi.getPublicRoles();
-      const loaded = (response.roles ?? []).filter((role) => role.roleCategory === 'public');
-      if (loaded.length > 0) {
-        publicRoles = loaded;
-        if (!loaded.some((r) => r.roleCode === accountType) && loaded[0]) {
-          accountType = loaded[0].roleCode as PublicRoleCode;
-        }
-      }
-    } catch {
-      // Keep fallback public roles if backend is temporarily unreachable
-    } finally {
-      loadingRoles = false;
-    }
   });
 
   $effect(() => {
     const prefillEmail = $page.url.searchParams.get('email');
     if (prefillEmail && !email) {
       email = prefillEmail;
-    }
-    const prefillRole = $page.url.searchParams.get('role') as PublicRoleCode | null;
-    if (prefillRole && publicRoles.some((r) => r.roleCode === prefillRole)) {
-      accountType = prefillRole;
     }
   });
 
@@ -220,13 +106,8 @@
       if (touched.confirmPassword || confirmPassword.length > 0) {
         setFieldError('confirmPassword', validateConfirmPassword(nextPassword, confirmPassword));
       }
-    } else if (field === 'confirmPassword') {
-      message = validateConfirmPassword(password, valueOverride ?? confirmPassword);
     } else {
-      const candidate = (valueOverride ?? accountType) as AccountType;
-      message = publicRoles.some((r) => r.roleCode === candidate)
-        ? undefined
-        : 'Please choose your public role.';
+      message = validateConfirmPassword(password, valueOverride ?? confirmPassword);
     }
 
     setFieldError(field, message);
@@ -244,16 +125,8 @@
     validateField(field);
   }
 
-  function handleRoleSelect(roleCode: AccountType): void {
-    accountType = roleCode as PublicRoleCode;
-    touched = { ...touched, accountType: true };
-    formError = null;
-    setFieldError('accountType', undefined);
-  }
-
   function validateAll(): boolean {
     touched = {
-      accountType: true,
       name: true,
       email: true,
       mobileCountryCode: true,
@@ -261,22 +134,13 @@
       password: true,
       confirmPassword: true,
     };
-    const roleErr = validateField('accountType');
     const nameErr = validateField('name');
     const emailErr = validateField('email');
     const countryCodeErr = validateField('mobileCountryCode');
     const mobileErr = validateField('mobileNumber');
     const passwordErr = validateField('password');
     const confirmErr = validateField('confirmPassword');
-    return (
-      !roleErr &&
-      !nameErr &&
-      !emailErr &&
-      !countryCodeErr &&
-      !mobileErr &&
-      !passwordErr &&
-      !confirmErr
-    );
+    return !nameErr && !emailErr && !countryCodeErr && !mobileErr && !passwordErr && !confirmErr;
   }
 
   async function handleSubmit(event: SubmitEvent): Promise<void> {
@@ -297,7 +161,6 @@
       email: email.trim().toLowerCase(),
       mobileCountryCode: normalizedCountryCode,
       hasMobileNumber: Boolean(normalizedMobile),
-      accountType,
       hasInviteToken: Boolean(inviteToken),
     });
 
@@ -309,7 +172,6 @@
         mobileNumber: normalizedMobile,
         password,
         confirmPassword,
-        accountType,
         inviteToken: inviteToken ?? undefined,
       });
 
@@ -317,13 +179,8 @@
         endpoint: registerEndpoint,
         userId: response.user.id,
         handle: response.user.handle,
-        accountType: response.user.accountType,
         redirectTo: response.redirectTo,
       });
-
-      const selectedRoleLabel =
-        publicRoles.find((r) => r.roleCode === response.user.accountType)?.roleName ??
-        response.user.accountType;
 
       setAuthSession(response.user, response.tokens);
       const joinedTitles = response.joinedProjectTitles ?? [];
@@ -332,13 +189,18 @@
         title:
           joinedTitles.length > 0
             ? `Joined "${joinedTitles[0]}" & created account!`
-            : `Account created as ${selectedRoleLabel}!`,
+            : 'Account created!',
         message:
           joinedTitles.length > 0
             ? `Welcome ${response.user.name}! You were automatically added as a contributor to ${joinedTitles.join(', ')}.`
-            : `Welcome ${response.user.name}. Now choose your Free or Premium plan.`,
+            : `Welcome ${response.user.name}! Your account is ready — you can post your first 2 projects for free.`,
       });
-      await goto('/signup/plan');
+
+      const targetPath =
+        response.redirectTo && response.redirectTo !== '/signup/plan'
+          ? response.redirectTo
+          : '/onboarding';
+      await goto(targetPath);
     } catch (err) {
       console.error('[Collab47 UI][Register] Registration failed', {
         endpoint: registerEndpoint,
@@ -358,7 +220,6 @@
       if (err instanceof ApiError) {
         formError = err.message;
         fieldErrors = {
-          accountType: err.fieldErrors.accountType,
           name: err.fieldErrors.name,
           email: err.fieldErrors.email,
           mobileCountryCode: err.fieldErrors.mobileCountryCode,
@@ -404,48 +265,6 @@
       <Alert tone="error" title="Registration failed">{formError}</Alert>
     {/if}
 
-    <!-- Public Role Selection on Top (Fetched from GET /api/v1/auth/public-roles) -->
-    <fieldset class="flex flex-col gap-2 border-0 p-0">
-      <legend class="flex w-full items-center justify-between text-xs font-semibold text-slate-700">
-        <span>{$t.auth.joiningAsLabel} <span class="text-rose-500">*</span></span>
-        <span class="font-medium text-logo-green">
-          {loadingRoles ? 'Loading roles...' : $t.auth.joiningAsHint}
-        </span>
-      </legend>
-
-      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {#each publicRoles as role (role.roleCode)}
-          {@const selected = accountType === role.roleCode}
-          <button
-            type="button"
-            onclick={() => handleRoleSelect(role.roleCode)}
-            aria-pressed={selected}
-            class="flex cursor-pointer flex-col items-start gap-1 rounded-xl border px-2.5 py-2 text-left transition {selected
-              ? 'border-logo-saffron bg-logo-saffron-soft/80 text-logo-saffron shadow-xs ring-1 ring-logo-saffron/40'
-              : 'border-slate-200 bg-white text-slate-700 hover:border-logo-saffron-border hover:bg-slate-50'}"
-          >
-            <div class="flex w-full items-center justify-between gap-1">
-              <Icon
-                name={ROLE_ICON_MAP[role.roleCode] ?? 'user'}
-                size={15}
-                class={selected ? 'text-logo-saffron' : 'text-logo-green'}
-              />
-              {#if selected}
-                <Icon name="check-circle" size={13} class="text-logo-saffron" />
-              {/if}
-            </div>
-            <span class="text-xs font-bold leading-tight {selected ? 'text-logo-saffron' : 'text-slate-900'}">
-              {role.roleName}
-            </span>
-          </button>
-        {/each}
-      </div>
-
-      {#if (touched.accountType || fieldErrors.accountType) && fieldErrors.accountType}
-        <span class="text-xs font-medium text-rose-600">{fieldErrors.accountType}</span>
-      {/if}
-    </fieldset>
-
     <Input
       id="register-name"
       label={$t.auth.fullNameLabel}
@@ -466,7 +285,7 @@
       type="email"
       icon="mail"
       bind:value={email}
-      placeholder="ananya.sharma@iitb.ac.in"
+      placeholder="you@example.com"
       autocomplete="email"
       required
       maxlength={254}
@@ -528,7 +347,7 @@
   </form>
 
   <Divider label={$t.auth.orRegisterEmail} />
-  <SocialLoginButton label={$t.auth.signupWithGoogle} redirectTo="/signup/plan" />
+  <SocialLoginButton label={$t.auth.signupWithGoogle} redirectTo="/onboarding" />
 
   {#snippet footer()}
     {$t.auth.alreadyHaveAccount}
